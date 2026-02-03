@@ -1,4 +1,5 @@
 import { Devvit, useState } from '@devvit/public-api';
+import { Theme } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({

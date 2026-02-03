@@ -102,6 +102,11 @@ Devvit.addCustomPostType({
                         </hstack>
                     ))}
                 </vstack>
+
+                {/* Brand Footer */}
+                <hstack alignment="center middle" padding="small">
+                    <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+                </hstack>
             </vstack>
         );
     },

@@ -1,4 +1,5 @@
 import { Devvit } from '@devvit/public-api';
+import { Theme } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({
@@ -16,8 +17,13 @@ Devvit.configure({
 Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
     render: (context) => (
-        <vstack>
-            <text>Guess the Trend!</text>
+        <vstack backgroundColor={Theme.colors.background} padding="medium" height="100%">
+            <text style="heading" color={Theme.colors.primary}>HIVE MIND GAUNTLET</text>
+            <text color={Theme.colors.text}>Guess the Trend!</text>
+            <spacer grow />
+            <hstack alignment="center middle" padding="small">
+                <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+            </hstack>
         </vstack>
     ),
 });

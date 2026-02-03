@@ -1,4 +1,9 @@
 export const Theme = {
+    brand: {
+        name: 'cosmopax',
+        motto: 'Total Gamification',
+        footer: 'cosmopax | Total Gamification',
+    },
     colors: {
         primary: '#FF4500', // Reddit Orange
         secondary: '#0079D3', // Reddit Blue

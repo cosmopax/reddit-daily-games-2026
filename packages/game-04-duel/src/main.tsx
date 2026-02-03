@@ -78,6 +78,11 @@ Devvit.addCustomPostType({
                 {state.gameOver && (
                     <button appearance="bordered" onPress={onReset}>PLAY AGAIN</button>
                 )}
+
+                {/* Brand Footer */}
+                <hstack alignment="center middle" padding="small">
+                    <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+                </hstack>
             </vstack>
         );
     },

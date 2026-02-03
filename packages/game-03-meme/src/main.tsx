@@ -44,6 +44,11 @@ Devvit.addCustomPostType({
                     <text color="#FFFFFF">Live Feed (Updates every minute)</text>
                     <image url="https://placeholder.com/meme.png" imageHeight={200} imageWidth={200} />
                 </vstack>
+
+                {/* Brand Footer */}
+                <hstack alignment="center middle" padding="small">
+                    <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+                </hstack>
             </vstack>
         );
     },

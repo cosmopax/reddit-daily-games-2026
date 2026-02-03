@@ -1,0 +1,4 @@
+name: game-02-trivia
+version: 0.0.1
+scheduler:
+  daily_reset: "0 0 * * *"

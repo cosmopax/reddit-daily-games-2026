@@ -1,0 +1,4 @@
+name: game-01-strategy
+version: 0.0.1
+scheduler:
+  hourly_tick: "0 * * * *"

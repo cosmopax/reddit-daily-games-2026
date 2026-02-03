@@ -1,0 +1,16 @@
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Devvit
+.devvit/
+.env
+
+# Antigravity/Agent
+.agent/memory/
+.agent/knowledge/imported_research/ # Keep the source scripts but maybe not all generated MDs if they are large, but user asked to index them. Let's keep them for now, but ignore memory.
+*.log
+
+# Personal
+.vscode/

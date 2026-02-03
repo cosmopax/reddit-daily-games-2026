@@ -1,0 +1,4 @@
+name: game-03-meme
+version: 0.0.1
+scheduler:
+  process_queue: "* * * * *"

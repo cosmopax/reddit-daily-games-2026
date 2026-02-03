@@ -1,0 +1,19 @@
+{
+    "sources": [
+        {
+            "name": "Flux.1 Schnell Docs",
+            "url": "https://black-forest-labs.ai/",
+            "description": "Critical for Game 3 optimization (cost/speed)."
+        },
+        {
+            "name": "Google Vertex AI Model Garden",
+            "url": "https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/explore-models",
+            "description": "Reference for Gemini 2.0 Flash capabilities (Game 4)."
+        },
+        {
+            "name": "Reddit Devvit Documentation",
+            "url": "https://developers.reddit.com/docs",
+            "description": "The source of truth for all constraints."
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+{
+  "modeMapping": {
+    "**/shared/**/*.ts": "plan",
+    "**/server/**/*.ts": "plan",
+    "**/*.tsx": "fast",
+    "scripts/*.py": "plan"
+  }
+}

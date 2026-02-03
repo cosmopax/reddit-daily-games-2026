@@ -40,10 +40,9 @@ export class MemeQueue {
         console.log(`Processing Meme Job ${job.id} for ${job.userId}`);
 
         try {
-            // CALL FLUX.1 API VIA PROXY
-            // const imageUrl = await this.callFlux(job.prompt);
-            // For MVP/Mock:
-            const imageUrl = `https://generated.image/mock/${job.id}.png`;
+            // 2. Fetch Generation via Proxy
+            const proxy = new ServiceProxy(this.context);
+            const imageUrl = await proxy.generateImage(job.prompt, job.id);
 
             // Store Result
             await this.context.redis.hSet(RESULTS_KEY, { [job.id]: imageUrl });

@@ -28,10 +28,9 @@ export class TrendIngestor {
             await this.context.redis.zAdd(ARCHIVE_KEY, { member: currentTrend, score: Date.now() });
         }
 
-        // 2. Fetch New Trend (Mock for now, needs real HTTP proxy)
-        // const response = await this.context.http.fetch('https://api.trends.provider/daily');
-        // const data = await response.json();
-        const newTrend = "Artificial Intelligence"; // Placeholder
+        // 2. Fetch New Trend via Proxy
+        const proxy = new ServiceProxy(this.context);
+        const newTrend = await proxy.fetchDailyTrend();
 
         // 3. Update State
         await this.context.redis.set(TRENDS_KEY, newTrend);

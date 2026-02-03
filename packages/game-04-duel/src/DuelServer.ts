@@ -67,15 +67,13 @@ export class DuelServer {
     }
 
     async processAITurn(userId: string, state: DuelState): Promise<DuelState> {
-        // MOCK GEMINI CALL
-        // const response = await this.context.http.fetch('https://gemini-proxy/generate', ...);
-        const aiMoves = ["Plasma Blast", "Binary Slash", "Recursive Trap"];
-        const move = aiMoves[Math.floor(Math.random() * aiMoves.length)];
+        // Fetch AI Move via Proxy (Gemini 2.0)
+        const proxy = new ServiceProxy(this.context);
+        const { move, damage } = await proxy.generateAiMove(state.history);
 
         state.history.push(`AI used: ${move}`);
-        const dmg = Math.floor(Math.random() * 15);
-        state.userHealth = Math.max(0, state.userHealth - dmg);
-        state.history.push(`You took ${dmg} damage!`);
+        state.userHealth = Math.max(0, state.userHealth - damage);
+        state.history.push(`You took ${damage} damage!`);
 
         if (state.userHealth === 0) {
             state.gameOver = true;

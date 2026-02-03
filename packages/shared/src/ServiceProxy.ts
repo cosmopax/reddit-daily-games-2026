@@ -76,37 +76,38 @@ export class ServiceProxy {
         }
 
         try {
-            // Using Flux-1 Schnell for speed
-            const modelVersion = "black-forest-labs/flux-schnell";
-            const url = "https://api.replicate.com/v1/predictions";
+            // Use the "models" endpoint to avoid hardcoding version hashes
+            // https://api.replicate.com/v1/models/{model_owner}/{model_name}/predictions
+            const url = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
 
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Token ${apiKey}`,
+                    "Authorization": `Bearer ${apiKey}`, // Replicate Standard is "Bearer", formerly "Token" (both often work, but Bearer is safer for new API)
                     "Content-Type": "application/json",
-                    "Prefer": "wait" // Tries to force sync return if fast enough
+                    "Prefer": "wait"
                 },
                 body: JSON.stringify({
-                    version: "f46a782487c69t901l117075c3246835150821937a077461937300c14479703c", // This version ID might change, ideally use model slug
-                    input: { prompt, aspect_ratio: "1:1" } // Simplified input
+                    input: {
+                        prompt,
+                        // aspect_ratio is not supported by all flux-schnell wrappers, removing to be safe
+                        // or check specific model docs. standard flux-schnell on replicate often just takes prompt.
+                        go_fast: true,
+                        megapixels: "1"
+                    }
                 })
             });
 
             if (!response.ok) {
-                throw new Error(`Replicate HTTP ${response.status}`);
+                const errText = await response.text();
+                throw new Error(`Replicate HTTP ${response.status}: ${errText}`);
             }
 
             const data = await response.json();
 
-            // Check status
             if (data.status === 'succeeded' && data.output && data.output[0]) {
                 return data.output[0];
-            } else if (data.status === 'processing' || data.status === 'starting') {
-                // If it didn't finish in the 'wait' window, we can't do much in a sterile lambda 
-                // without a webhook receiver or long polling loop. 
-                // For MVP, we'll try one optimistic poll or fail.
-                // Ideally: return a "pending" URL or ID to frontend to poll.
+            } else {
                 return data.urls?.get || '';
             }
 
@@ -117,7 +118,7 @@ export class ServiceProxy {
     }
 
     /**
-     * Generates an AI move for the Duel game using Google Gemini 2.0 Flash.
+     * Generates an AI move for the Duel game using Google Gemini 1.5 Flash.
      */
     async generateAiMove(history: string[]): Promise<{ move: string; damage: number }> {
         const apiKey = await this.getSecret('GEMINI_API_KEY');
@@ -127,7 +128,8 @@ export class ServiceProxy {
         }
 
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+            // Switch to 1.5 Flash (Verified Stable)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
             // Construct a prompt context
             const systemPrompt = `

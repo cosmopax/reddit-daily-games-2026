@@ -1,4 +1,4 @@
-name: game-01-strategy
+name: get-rich-lazy
 version: 0.0.1
 scheduler:
-  hourly_tick: "0 * * * *"
+  hourly_tick: 0 * * * *

@@ -18,7 +18,7 @@ Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
     render: (context) => (
         <vstack backgroundColor={Theme.colors.background} padding="medium" height="100%">
-            <text style="heading" color={Theme.colors.primary}>HIVE MIND</text>
+            <text style="heading" color={Theme.colors.primary}>HYPER HIVE MIND</text>
             <text color={Theme.colors.text}>Guess the Trend!</text>
             <spacer grow />
             <hstack alignment="center middle" padding="small">

@@ -1,5 +1,6 @@
 import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { DuelServer, DuelState } from './DuelServer';
+import { Theme } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
@@ -39,9 +40,7 @@ Devvit.addCustomPostType({
             // refresh();
         };
 
-        import { Theme } from 'shared';
-
-        // ... (render start)
+        // Render the arena UI
 
         if (loading) return <vstack><text>Loading Arena...</text></vstack>;
         if (!state) return <vstack><text>Error loading arena.</text></vstack>;

@@ -1,4 +1,4 @@
-name: game-03-meme
+name: meme-wars
 version: 0.0.1
 scheduler:
-  process_queue: "* * * * *"
+  process_queue: '* * * * *'

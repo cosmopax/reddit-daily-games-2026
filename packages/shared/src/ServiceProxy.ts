@@ -141,20 +141,47 @@ export class ServiceProxy {
     async generateAiMove(history: string[]): Promise<{ move: string; damage: number }> {
         const apiKey = await this.getSecret('GEMINI_API_KEY');
         if (!apiKey) {
-            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            console.warn('Missing GEMINI_API_KEY');
+            return { move: 'Systems Offline (No Key)', damage: 0 };
+        }
 
-            if (textResponse) {
-                // Sanitize markdown code blocks if present
-                const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                const parsed = JSON.parse(cleanJson);
-                return {
-                    move: parsed.move || 'Critical Glitch',
-                    damage: typeof parsed.damage === 'number' ? parsed.damage : 10
-                };
+        const models = ['gemini-1.5-flash', 'gemini-pro'];
+
+        for (const model of models) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                const systemPrompt = `
+You are a combat AI in a text RPG. The user casts spells at you.
+History:
+${history.join('\n')}
+
+Reply with valid JSON ONLY:
+{ "move": "Description of your counter-attack", "damage": <integer 0-20> }
+Make the move thematic and cool.
+                `;
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt }] }]
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                        return JSON.parse(cleanJson);
+                    }
+                } else {
+                    console.warn(`Gemini ${model} failed: ${response.status}`);
+                }
+            } catch (e) {
+                console.error(`Gemini ${model} Error:`, e);
             }
-
-        } catch (e) {
-            console.error('Duel AI Error:', e);
         }
 
         return { move: 'Static Noise', damage: 5 };

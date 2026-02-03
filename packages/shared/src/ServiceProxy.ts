@@ -50,7 +50,8 @@ export class ServiceProxy {
             const response = await fetch(url);
 
             if (!response.ok) {
-                throw new Error(`SerpApi HTTP ${response.status}`);
+                const errText = await response.text();
+                throw new Error(`SerpApi HTTP ${response.status}: ${errText}`);
             }
 
             const data = await response.json();
@@ -87,7 +88,8 @@ export class ServiceProxy {
                 if (response.status === 402) {
                     console.warn("Replicate billing exhausted. Falling back to Hugging Face...");
                 } else if (!response.ok) {
-                    throw new Error(`Replicate HTTP ${response.status}`);
+                    const errText = await response.text();
+                    throw new Error(`Replicate HTTP ${response.status}: ${errText}`);
                 } else {
                     const data = await response.json();
                     if (data.status === 'succeeded' && data.output?.[0]) return data.output[0];
@@ -126,6 +128,9 @@ export class ServiceProxy {
                     // or ideally finding a free URL generator.
                     console.log("HF Generation Successful (Blob received).");
                     return `https://placeholder.com/hf_gen_success_${jobId}.png`;
+                } else {
+                    const errText = await response.text();
+                    console.warn(`HF Error ${response.status}: ${errText}`);
                 }
             } catch (e) {
                 console.error('HF Error:', e);
@@ -177,7 +182,8 @@ Make the move thematic and cool.
                         return JSON.parse(cleanJson);
                     }
                 } else {
-                    console.warn(`Gemini ${model} failed: ${response.status}`);
+                    const err = await response.text();
+                    console.warn(`Gemini ${model} failed: ${response.status} - ${err}`);
                 }
             } catch (e) {
                 console.error(`Gemini ${model} Error:`, e);

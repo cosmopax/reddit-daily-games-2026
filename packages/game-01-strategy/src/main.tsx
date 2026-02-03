@@ -61,14 +61,43 @@ Devvit.addCustomPostType({
                     <text style="heading" size="small" color="#FFFF00">Assets</text>
                     {Object.values(ASSETS).map((asset) => (
                         <hstack key={asset.id} alignment="middle set" backgroundColor="#222222" padding="small" cornerRadius="small">
-                            <vstack>
-                                <text color="#FFFFFF" weight="bold">{asset.name}</text>
-                                <text color="#888888">Owned: {state.assets[asset.id as AssetType] || 0}</text>
-                                <text color="#44FF44">+${asset.incomePerHour}/hr</text>
+                            <vstack backgroundColor={context.ui.theme.colors.background} height="100%" width="100%" padding="medium">
+
+                                {/* Header */}
+                                <hstack alignment="center middle" padding="medium">
+                                    <text size="xlarge" weight="bold" color={context.ui.theme.colors.primary}>GET RICH FAST</text>
+                                    <spacer size="medium" />
+                                    <text color={context.ui.theme.colors.textDim}>Tick: {state.lastTick}</text>
+                                </hstack>
+
+                                {/* Stats Card */}
+                                <vstack cornerRadius="medium" backgroundColor={context.ui.theme.colors.surface} padding="medium" border="thin" borderColor={context.ui.theme.colors.textDim}>
+                                    <text size="large" color={context.ui.theme.colors.gold}>${state.cash.toLocaleString()}</text>
+                                    <text size="small" color={context.ui.theme.colors.text}>Income: ${state.income}/hr</text>
+                                </vstack>
+
+                                <spacer size="medium" />
+
+                                {/* Assets Grid */}
+                                <vstack gap="small">
+                                    {Object.entries(ASSETS).map(([key, config]) => (
+                                        <hstack key={key} backgroundColor={context.ui.theme.colors.surface} padding="small" cornerRadius="small" alignment="center middle">
+                                            <vstack grow>
+                                                <text weight="bold" color={context.ui.theme.colors.text}>{config.name}</text>
+                                                <text size="small" color={context.ui.theme.colors.success}>+${config.incomePerHour}/hr</text>
+                                            </vstack>
+                                            <button
+                                                onPress={() => onBuy(key as AssetType)}
+                                                disabled={state.cash < config.cost}
+                                                appearance="primary"
+                                            >
+                                                Buy (${config.cost})
+                                            </button>
+                                        </hstack>
+                                    ))}
+                                </vstack>
+
                             </vstack>
-                            <button onPress={() => onBuy(asset.id)} disabled={state.cash < asset.cost}>
-                                Buy (${asset.cost})
-                            </button>
                         </hstack>
                     ))}
                 </vstack>

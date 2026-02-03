@@ -1,0 +1,6 @@
+Init Reddit 'Daily Games' 2026 Monorepo (Devvit). Structure: packages/{shared,game-01-strategy,game-02-trivia,game-03-meme,game-04-duel}.
+Constraints: Enforce 30s server timeout, 500MB Redis limit (generate BitPacking util in shared), BLOCK client fetch (use devvit.http).
+Goals:
+1. Shared logic design_manifesto.md.
+2. Game Stubs: Strategy (Hourly Ticks), Trivia (Daily Trends), Meme (Async Flux), Duel (Gemini 2.0).
+3. .devvit/config.yaml with scheduler definitions.

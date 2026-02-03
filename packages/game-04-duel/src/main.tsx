@@ -49,7 +49,7 @@ Devvit.addCustomPostType({
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
                 <hstack alignment="center middle">
-                    <text size="xlarge" weight="bold" color={Theme.colors.primary}>NEON ARENA</text>
+                    <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
                 </hstack>
 
                 <hstack alignment="space-between middle" width="100%" padding="small">

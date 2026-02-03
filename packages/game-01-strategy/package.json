@@ -1,14 +1,17 @@
 {
-    "name": "game-01-strategy",
-    "version": "1.0.0",
-    "dependencies": {
-        "@devvit/public-api": "^0.11.0",
-        "@devvit/redis": "^0.11.0",
-        "react": "^18.0.0",
-        "shared": "file:../shared"
-    },
-    "main": "src/main.tsx",
-    "devDependencies": {
-        "@types/react": "^19.2.10"
-    }
+  "name": "get-rich-lazy",
+  "version": "0.0.0",
+  "dependencies": {
+    "@devvit/public-api": "0.12.11",
+    "@devvit/redis": "0.12.11",
+    "react": "^18.0.0",
+    "shared": "file:../shared"
+  },
+  "main": "src/main.tsx",
+  "devDependencies": {
+    "@types/react": "^19.2.10"
+  },
+  "type": "module",
+  "private": true,
+  "license": "BSD-3-Clause"
 }

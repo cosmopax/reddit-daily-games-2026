@@ -31,7 +31,7 @@ Devvit.addCustomPostType({
 
         return (
             <vstack height="100%" width="100%" backgroundColor="#FF4500" padding="medium">
-                <text style="heading" color="#FFFFFF">MEME WARS 2026</text>
+                <text style="heading" color="#FFFFFF">MEME WARS</text>
                 <text color="#FFFFFF">Enter your prompt for Flux.1:</text>
                 <hstack>
                     <textfield placeholder="A cyberpunk cat..." onChange={(v) => setPrompt(v)} />

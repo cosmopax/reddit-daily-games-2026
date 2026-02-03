@@ -52,7 +52,7 @@ Devvit.addCustomPostType({
 
         return (
             <vstack height="100%" width="100%" backgroundColor="#000000" padding="medium">
-                <text style="heading" color="#00FF00">GET RICH FAST</text>
+                <text style="heading" color="#00FF00">GET RICH LAZY</text>
                 <hstack alignment="middle start" width="100%">
                     <text color="#FFFFFF">Net Worth: ${state.cash}</text>
                     <text color="#AAAAAA">Last Tick: {new Date(state.lastTick).toLocaleTimeString()}</text>
@@ -66,7 +66,7 @@ Devvit.addCustomPostType({
 
                                 {/* Header */}
                                 <hstack alignment="center middle" padding="medium">
-                                    <text size="xlarge" weight="bold" color={context.ui.theme.colors.primary}>GET RICH FAST</text>
+                                    <text size="xlarge" weight="bold" color={context.ui.theme.colors.primary}>GET RICH LAZY</text>
                                     <spacer size="medium" />
                                     <text color={context.ui.theme.colors.textDim}>Tick: {state.lastTick}</text>
                                 </hstack>

@@ -1,5 +1,6 @@
 import { Devvit, useState, useAsync } from '@devvit/public-api';
-import { GameStrategyServer } from './server';
+import { AssetType, AssetConfig, ASSETS, UserState } from './server';
+import { Theme } from 'shared';
 import { ASSETS, AssetType, UserState } from './types';
 
 Devvit.configure({

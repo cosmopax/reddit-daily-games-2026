@@ -39,38 +39,44 @@ Devvit.addCustomPostType({
             // refresh();
         };
 
+        import { Theme } from 'shared';
+
+        // ... (render start)
+
         if (loading) return <vstack><text>Loading Arena...</text></vstack>;
         if (!state) return <vstack><text>Error loading arena.</text></vstack>;
 
         return (
-            <vstack height="100%" width="100%" backgroundColor="#2a0a3b" padding="medium">
-                <text style="heading" color="#FF00FF">NEON ARENA</text>
+            <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
+                <hstack alignment="center middle">
+                    <text size="xlarge" weight="bold" color={Theme.colors.primary}>NEON ARENA</text>
+                </hstack>
 
-                <hstack alignment="spaceBetween" width="100%" padding="small">
+                <hstack alignment="space-between middle" width="100%" padding="small">
                     <vstack>
-                        <text color="#00FFFF">YOU</text>
-                        <text color="#FFFFFF" size="large">{state.userHealth} HP</text>
+                        <text weight="bold" color={Theme.colors.secondary}>YOU</text>
+                        <text color={Theme.colors.text} size="large">{state.userHealth} HP</text>
                     </vstack>
-                    <text color="#FFFFFF">VS</text>
-                    <vstack>
-                        <text color="#FF0000">AI</text>
-                        <text color="#FFFFFF" size="large">{state.aiHealth} HP</text>
+                    <text color={Theme.colors.textDim}>VS</text>
+                    <vstack alignment="end">
+                        <text weight="bold" color={Theme.colors.danger}>AI</text>
+                        <text color={Theme.colors.text} size="large">{state.aiHealth} HP</text>
                     </vstack>
                 </hstack>
 
-                <vstack height="200px" backgroundColor="#111111" cornerRadius="small" padding="small">
+                <vstack grow backgroundColor={Theme.colors.surface} cornerRadius="medium" padding="small" gap="small">
                     {state.history.slice(-5).map((log, i) => (
-                        <text key={i} color="#BBBBBB">{log}</text>
+                        <text key={i} color={Theme.colors.text}>{log}</text>
                     ))}
                 </vstack>
 
-                <hstack padding="small">
+                <hstack padding="small" gap="medium">
                     <textfield placeholder="Cast Spell..." onChange={(v) => setMove(v)} />
-                    <button onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>ATTACK</button>
+                    <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>ATTACK</button>
                 </hstack>
 
                 {state.gameOver && (
-                    <button onPress={onReset}>PLAY AGAIN</button>
+                    <button appearance="bordered" onPress={onReset}>PLAY AGAIN</button>
                 )}
             </vstack>
         );

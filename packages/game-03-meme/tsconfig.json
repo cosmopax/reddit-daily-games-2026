@@ -3,7 +3,7 @@
         "target": "es2020",
         "module": "commonjs",
         "moduleResolution": "node",
-        "jsx": "react-jsx",
+        "jsx": "preserve",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,

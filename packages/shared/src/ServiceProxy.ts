@@ -150,13 +150,12 @@ export class ServiceProxy {
             return { move: 'Systems Offline (No Key)', damage: 0 };
         }
 
-        // Updated models list: Try bleeding edge 2.0/experimental first, then stable 1.5
+        // Updated models list: "gemini-2.0-flash" is the only one verified to exist for this key (gave 429, not 404).
         const models = [
-            'gemini-2.0-flash-exp', // Often the "Gemini 3" equivalent in preview
-            'gemini-2.0-flash',     // Potential stable tag
-            'gemini-1.5-flash-latest',
+            'gemini-2.0-flash',     // CONFIRMED EXITS (Hit Rate Limit)
+            'gemini-2.0-flash-exp',
             'gemini-1.5-flash',
-            'gemini-pro'
+            'gemini-1.5-pro'
         ];
 
         for (const model of models) {

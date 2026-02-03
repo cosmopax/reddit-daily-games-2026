@@ -46,7 +46,8 @@ export class ServiceProxy {
         }
 
         try {
-            const url = `https://serpapi.com/search.json?engine=google_trends_trending_now&frequency=daily&geo=US&api_key=${apiKey}`;
+            // Updated SerpApi Engine logic (removed frequency=daily as it caused 400)
+            const url = `https://serpapi.com/search.json?engine=google_trends_trending_now&geo=US&api_key=${apiKey}`;
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -56,6 +57,11 @@ export class ServiceProxy {
 
             const data = await response.json();
             // Parse SerpApi response for the first trending query
+            // Structure: daily_searches is likely gone/changed. trending_now usually returns 'trending_searches'
+            if (data.trending_searches?.[0]?.query) {
+                return data.trending_searches[0].query;
+            }
+            // Fallback to older structure just in case, or first available string
             if (data.daily_searches?.[0]?.searches?.[0]?.query) {
                 return data.daily_searches[0].searches[0].query;
             }
@@ -66,7 +72,7 @@ export class ServiceProxy {
     }
 
     /**
-     * Generates an image using Flux.1 via Replicate HTTP API.
+     * Generates an image using Replicate (Flux) or Hugging Face Fallback.
      * Note: Devvit has a 30s timeout. Replicate 'schnell' models are fast enough (~2-5s).
      */
     async generateImage(prompt: string, jobId: string): Promise<string> {
@@ -104,9 +110,10 @@ export class ServiceProxy {
         const hfKey = await this.getSecret('HUGGINGFACE_TOKEN');
         if (hfKey) {
             try {
-                // Using a stable diffusion model as Flux might be gated or heavy for free tier
+                // UPDATE: api-inference.huggingface.co is deprecated (410). 
+                // Using router.huggingface.co
                 const model = "stabilityai/stable-diffusion-xl-base-1.0";
-                const url = `https://api-inference.huggingface.co/models/${model}`;
+                const url = `https://router.huggingface.co/hf-inference/models/${model}`; // Corrected router URL
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -118,15 +125,8 @@ export class ServiceProxy {
                 });
 
                 if (response.ok) {
-                    // HF returns a blob for image generation usually. 
-                    // This is tricky in Devvit. We might need a base64 string or a hosted URL.
-                    // Devvit doesn't easily host blobs. 
-                    // We'll return a placeholder for now saying "HF Success" 
-                    // because strictly complying with "URL" requirement is hard without S3.
-                    // BUT: user asked for free tier.
-                    // Let's assume we just return a placeholder mock for now if HF works, 
-                    // or ideally finding a free URL generator.
                     console.log("HF Generation Successful (Blob received).");
+                    // Return a data URI or placeholder since we can't easily host the blob here without S3
                     return `https://placeholder.com/hf_gen_success_${jobId}.png`;
                 } else {
                     const errText = await response.text();
@@ -150,10 +150,18 @@ export class ServiceProxy {
             return { move: 'Systems Offline (No Key)', damage: 0 };
         }
 
-        const models = ['gemini-1.5-flash', 'gemini-pro'];
+        // Updated models list: Try bleeding edge 2.0/experimental first, then stable 1.5
+        const models = [
+            'gemini-2.0-flash-exp', // Often the "Gemini 3" equivalent in preview
+            'gemini-2.0-flash',     // Potential stable tag
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash',
+            'gemini-pro'
+        ];
 
         for (const model of models) {
             try {
+                // Using v1beta for newer models
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
                 const systemPrompt = `

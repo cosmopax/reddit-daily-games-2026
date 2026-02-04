@@ -142,7 +142,6 @@ Devvit.addCustomPostType({
                 </hstack>
             </vstack>
         );
-        );
     },
 });
 

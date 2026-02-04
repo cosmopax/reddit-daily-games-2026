@@ -1,5 +1,5 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
-import { Theme } from 'shared';
+import { Theme, Leaderboard } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({
@@ -62,17 +62,31 @@ Devvit.addCustomPostType({
             });
             setFeed(newFeed);
 
-            // Commit
+            // 1. Update Meme Score (Local Content Leaderboard)
             await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
-            // Also update the metadata JSON? That's expensive (Read-Modify-Write).
-            // Ideally we just trust ZSet for score, and Metadata for static info.
-            // But UI reads from Metadata.
-            // WORKAROUND: We won't update the JSON blob on every vote to avoid race conditions.
-            // We rely on ZSCORE for the *real* score if we wanted perfection, 
-            // but for this MVP, let's just update the ZSet.
-            // AND we should probably update the JSON periodically or just fetch score from ZSet separately?
-            // Fetching 10 scores is cheap.
-            // Let's just update ZSet and let the UI be slightly eventually consistent or optimistic.
+
+            // 2. Credit Author (Global User Leaderboard)
+            const targetMeme = feed.find(p => p.id === memeId);
+            if (targetMeme?.userId) {
+                const authorId = targetMeme.userId;
+
+                // Increment Author's Cumulative Score
+                // We use a separate key for tracking total meme karma
+                const authorScoreKey = `user:${authorId}:meme_score`;
+                const newScore = await context.redis.incrBy(authorScoreKey, delta);
+
+                // Submit to Global Leaderboard
+                const lb = new Leaderboard(context, 'game3_meme');
+                let username = 'Meme Artist';
+                try {
+                    // Try to get username if possible, or maybe we should have stored it in MemePost?
+                    // Fetching here is fine for now.
+                    const u = await context.reddit.getUserById(authorId);
+                    if (u) username = u.username;
+                } catch (e) { }
+
+                await lb.submitScore(authorId, username, newScore);
+            }
         };
 
         const onSubmit = async () => {

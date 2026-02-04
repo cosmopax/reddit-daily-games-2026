@@ -1,5 +1,5 @@
 import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
-import { Theme, ServiceProxy } from 'shared';
+import { Theme, ServiceProxy, Leaderboard } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({
@@ -96,22 +96,42 @@ Devvit.addCustomPostType({
         const onGuess = async (choice: 'higher' | 'lower') => {
             if (!data?.trends) return;
             const { a, b } = data.trends;
-            const isHigher = b.traffic > a.traffic; // "Is B higher than A?" (Usually Higher/Lower refers to the *second* option relative to first)
-            // The UI shows Topic A vs Topic B.
-            // UX: "Topic B: Higher or Lower?"
-
+            const isHigher = b.traffic > a.traffic;
             const win = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
-            setResult(win ? 'correct' : 'wrong');
-            setHasPlayed(true); // Optimistic update
 
-            // Record participation
+            setResult(win ? 'correct' : 'wrong');
+            setHasPlayed(true);
+
+            // Record participation for today
             await context.redis.hSet('daily_participants', { [userId]: win ? '1' : '0' });
 
+            // Update Persistent Stats (Streak & Leaderboard)
+            const statsKey = `user:${userId}:stats`;
+            const statsRaw = await context.redis.get(statsKey);
+            let stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalWins: 0, maxStreak: 0 };
+
             if (win) {
-                context.ui.showToast("Correct! +1 Streak");
+                stats.streak += 1;
+                stats.totalWins += 1;
+                if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+                context.ui.showToast(`Correct! Streak: ${stats.streak}`);
+
+                // Submit to Leaderboard (Total Wins)
+                const lb = new Leaderboard(context, 'game2_trivia');
+                // Get username safely
+                let username = 'Hive Mind Node';
+                try {
+                    const u = await context.reddit.getUserById(userId);
+                    if (u) username = u.username;
+                } catch (e) { }
+                await lb.submitScore(userId, username, stats.totalWins);
+
             } else {
+                stats.streak = 0; // Reset streak
                 context.ui.showToast("Wrong! Streak Reset.");
             }
+
+            await context.redis.set(statsKey, JSON.stringify(stats));
         };
 
         if (loading || !data) return <vstack alignment="center middle"><text>Loading Trends...</text></vstack>;

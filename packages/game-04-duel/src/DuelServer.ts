@@ -1,5 +1,5 @@
 import { Context } from '@devvit/public-api';
-import { RedisWrapper } from 'shared';
+import { RedisWrapper, ServiceProxy } from 'shared';
 
 const USER_HEALTH = 100;
 const AI_HEALTH = 100;

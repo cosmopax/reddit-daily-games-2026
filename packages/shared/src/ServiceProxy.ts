@@ -226,4 +226,11 @@ Make the move thematic and cool.
 
         return { move: 'Static Noise', damage: 5 };
     }
+    async generateCharacterPortrait(archetype: string, region: string = 'Neo-Tokyo'): Promise<string> {
+        const prompt = `Cinematic portrait of a ${archetype}, ${region} style, High-Fashion, Cyberpunk aesthetic, Unreal Engine 5 render, 8k resolution, detailed facial features, sleek neon lighting, confident expression.`;
+        // Reuse generateImage logic (which handles Replicate/HF fallback)
+        // We use a random ID for the job to ensure uniqueness
+        const randomId = Math.random().toString(36).substring(7);
+        return this.generateImage(prompt, `char_${randomId}`);
+    }
 }

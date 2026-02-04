@@ -19,4 +19,14 @@ export interface UserState {
     netWorth: number;
     assets: Record<AssetType, number>;
     lastTick: number; // Timestamp of last income processing
+    advisors?: ExecutiveAdvisor[]; // Unlocked Advisors
+}
+
+export interface ExecutiveAdvisor {
+    id: string;
+    name: string;
+    role: string;
+    benefit: string;
+    multiplier: number; // 1.1 = +10%
+    portraitUrl: string;
 }

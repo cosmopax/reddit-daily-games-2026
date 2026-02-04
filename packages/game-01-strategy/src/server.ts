@@ -1,6 +1,6 @@
 import { Context, JobContext } from '@devvit/public-api';
-import { RedisWrapper, DailyScheduler } from 'shared';
-import { ASSETS, AssetType, UserState } from './types';
+import { RedisWrapper, DailyScheduler, ServiceProxy } from 'shared';
+import { ASSETS, AssetType, UserState, ExecutiveAdvisor } from './types';
 
 const USER_KEY_PREFIX = 'user:v1:';
 
@@ -8,7 +8,10 @@ export class GameStrategyServer {
     redis: RedisWrapper;
     scheduler: DailyScheduler;
 
+    context: Context | JobContext;
+
     constructor(context: Context | JobContext) {
+        this.context = context;
         this.redis = new RedisWrapper(context.redis);
         this.scheduler = new DailyScheduler(context.scheduler);
     }
@@ -137,5 +140,28 @@ export class GameStrategyServer {
         console.log("Processing hourly tick...");
         // Ideally, we'd iterate a specific ZSET shard of active users.
         // For MVP, we pass. Implementation details for sharding would go here.
+    /**
+     * Unlocks a new "Executive Advisor" if net worth milestones are met.
+     */
+    async unlockAdvisor(userId: string): Promise < string | null > {
+            const state = await this.getUserState(userId);
+
+            // Milestones: 1M, 10M, 100M, 1B
+            // Check if we need to adding slot logic or just random unlock
+            const currentAdvisors = state.advisors || [];
+            if(currentAdvisors.length >= 4) return null; // Max 4
+
+            const cost = 1000000 * Math.pow(10, currentAdvisors.length);
+            if(state.netWorth < cost) return null; // Not rich enough
+
+            // Generate Advisor
+            const proxy = new ServiceProxy(this.scheduler.context); // wait, need context access. 
+            // We stored context in scheduler? No, we need context.
+            // Quick fix: pass context to method or store in class (it is stored in scheduler but maybe public?)
+            // Let's assume we can pass it or fix constructor. 
+            // Actually this.scheduler.context might not be valid.
+            // Let's instantiate Proxy with "this.redis.context" if available? 
+            // ServiceProxy needs Context. GameStrategyServer constructed with Context.
+            // We should store context in Class.
+        }
     }
-}

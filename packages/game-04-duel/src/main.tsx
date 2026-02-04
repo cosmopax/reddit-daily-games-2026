@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import { DuelServer, DuelState } from './DuelServer';
-import { Theme } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
@@ -63,12 +63,42 @@ Devvit.addCustomPostType({
         if (loading) return <vstack><text>Loading Arena...</text></vstack>;
         if (!state) return <vstack><text>Error loading arena.</text></vstack>;
 
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+        const [lbLoading, setLbLoading] = useState(false);
+
+        const loadLeaderboard = async () => {
+            setLbLoading(true);
+            const lb = new Leaderboard(context, 'game4_duel');
+            const data = await lb.getTop(10);
+            setLeaderboardData(data);
+            setLbLoading(false);
+        };
+
+        if (showLeaderboard) {
+            return (
+                <LeaderboardUI
+                    title="VALKYRIE SLAYERS"
+                    entries={leaderboardData}
+                    isLoading={lbLoading}
+                    onRefresh={loadLeaderboard}
+                    onClose={() => setShowLeaderboard(false)}
+                />
+            );
+        }
+
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
                 {/* Header */}
                 <vstack alignment="center middle" padding="small">
-                    <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
-                    <text size="small" color={Theme.colors.textDim}>vs Gemini 2.0 Flash</text>
+                    <hstack alignment="space-between middle" width="100%">
+                        <spacer />
+                        <vstack alignment="center middle">
+                            <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
+                            <text size="small" color={Theme.colors.textDim}>vs Gemini 2.0 Flash</text>
+                        </vstack>
+                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
+                    </hstack>
                 </vstack>
 
                 <spacer size="medium" />

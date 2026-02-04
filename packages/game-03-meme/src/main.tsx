@@ -1,5 +1,5 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
-import { Theme, Leaderboard } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({
@@ -99,12 +99,42 @@ Devvit.addCustomPostType({
             // (In prod, scheduler picks it up)
         };
 
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+        const [lbLoading, setLbLoading] = useState(false);
+
+        const loadLeaderboard = async () => {
+            setLbLoading(true);
+            const lb = new Leaderboard(context, 'game3_meme');
+            const data = await lb.getTop(10);
+            setLeaderboardData(data);
+            setLbLoading(false);
+        };
+
+        if (showLeaderboard) {
+            return (
+                <LeaderboardUI
+                    title="MEME LORDS"
+                    entries={leaderboardData}
+                    isLoading={lbLoading}
+                    onRefresh={loadLeaderboard}
+                    onClose={() => setShowLeaderboard(false)}
+                />
+            );
+        }
+
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
                 {/* Header */}
                 <vstack alignment="center middle" padding="medium">
-                    <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">MEME WARS</text>
-                    <text color={Theme.colors.textDim}>Flux.1 AI Meme Generator</text>
+                    <hstack alignment="space-between middle" width="100%">
+                        <spacer />
+                        <vstack alignment="center middle">
+                            <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">MEME WARS</text>
+                            <text color={Theme.colors.textDim}>Flux.1 AI Meme Generator</text>
+                        </vstack>
+                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Top Artists</button>
+                    </hstack>
                 </vstack>
 
                 <spacer size="medium" />

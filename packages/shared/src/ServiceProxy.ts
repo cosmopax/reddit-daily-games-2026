@@ -38,15 +38,17 @@ export class ServiceProxy {
      * Fetches the current daily search trend from Google Trends via SerpApi.
      * Fallback to a hardcoded list on failure.
      */
-    async fetchDailyTrend(): Promise<string> {
+    async fetchDailyTrends(count: number = 2): Promise<{ query: string; traffic: number; trafficDisplay: string }[]> {
         const apiKey = await this.getSecret('SERPAPI_KEY');
         if (!apiKey) {
             console.warn('Missing SERPAPI_KEY');
-            return 'Minecraft'; // Fallback
+            return [
+                { query: 'Minecraft', traffic: 500000, trafficDisplay: '500K+' },
+                { query: 'Fortnite', traffic: 200000, trafficDisplay: '200K+' }
+            ];
         }
 
         try {
-            // Updated SerpApi Engine logic (removed frequency=daily as it caused 400)
             const url = `https://serpapi.com/search.json?engine=google_trends_trending_now&geo=US&api_key=${apiKey}`;
             const response = await fetch(url);
 
@@ -56,19 +58,44 @@ export class ServiceProxy {
             }
 
             const data: any = await response.json();
-            // Parse SerpApi response for the first trending query
-            // Structure: daily_searches is likely gone/changed. trending_now usually returns 'trending_searches'
-            if (data.trending_searches?.[0]?.query) {
-                return data.trending_searches[0].query;
+            const results: { query: string; traffic: number; trafficDisplay: string }[] = [];
+
+            if (data.trending_searches && Array.isArray(data.trending_searches)) {
+                for (const item of data.trending_searches) {
+                    if (results.length >= count) break;
+
+                    const query = item.query;
+                    const trafficDisplay = item.formatted_traffic || "10K+";
+                    // Parse "200K+" -> 200000
+                    let traffic = 0;
+                    if (trafficDisplay) {
+                        const numStr = trafficDisplay.replace(/[^0-9.]/g, '');
+                        traffic = parseInt(numStr, 10);
+                        if (trafficDisplay.toLowerCase().includes('k')) traffic *= 1000;
+                        if (trafficDisplay.toLowerCase().includes('m')) traffic *= 1000000;
+                    }
+
+                    results.push({ query, traffic, trafficDisplay });
+                }
             }
-            // Fallback to older structure just in case, or first available string
-            if (data.daily_searches?.[0]?.searches?.[0]?.query) {
-                return data.daily_searches[0].searches[0].query;
+
+            // Fallback if not enough real data
+            if (results.length < count) {
+                results.push({ query: 'Retro Gaming', traffic: 50000, trafficDisplay: '50K+' });
+                if (results.length < count) {
+                    results.push({ query: 'AI Coding', traffic: 42000, trafficDisplay: '42K+' });
+                }
             }
+
+            return results;
+
         } catch (e) {
             console.error('Trend Fetch Error:', e);
+            return [
+                { query: 'Error', traffic: 1000, trafficDisplay: '1K+' },
+                { query: 'Fallback', traffic: 500, trafficDisplay: '500+' }
+            ];
         }
-        return 'Retro Gaming'; // Fallback
     }
 
     /**

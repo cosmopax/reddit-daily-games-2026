@@ -228,4 +228,8 @@ export class GameStrategyServer {
         });
         await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
     }
+    async getLeaderboard() {
+        const lb = new Leaderboard(this.context, 'game1_strategy');
+        return lb.getTop(10);
+    }
 }

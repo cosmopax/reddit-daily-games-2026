@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import { AssetType, AssetConfig, ASSETS, UserState } from './server';
-import { Theme } from 'shared';
+import { Theme, LeaderboardUI } from 'shared';
 import { ASSETS, AssetType, UserState } from './types';
 
 Devvit.configure({
@@ -61,17 +61,54 @@ Devvit.addCustomPostType({
         if (loading) return <vstack alignment="center middle"><text>Loading Empire...</text></vstack>;
         if (!state) return <vstack><text>Error loading state</text></vstack>;
 
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+        const [lbLoading, setLbLoading] = useState(false);
+
+        const loadLeaderboard = async () => {
+            setLbLoading(true);
+            const data = await server.getLeaderboard();
+            setLeaderboardData(data);
+            setLbLoading(false);
+        };
+
+        if (showLeaderboard) {
+            return (
+                <LeaderboardUI
+                    title="TYCOON RANKINGS"
+                    entries={leaderboardData}
+                    isLoading={lbLoading}
+                    onRefresh={loadLeaderboard}
+                    onClose={() => setShowLeaderboard(false)}
+                />
+            );
+        }
+
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
                 {/* Header with App-Scope Gradient */}
                 <vstack padding="medium" cornerRadius="medium">
-                    <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">GET RICH LAZY</text>
+                    <hstack alignment="space-between middle">
+                        <vstack>
+                            <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">GET RICH LAZY</text>
+                            <text color={Theme.colors.textDim} size="small">Last Tick: {new Date(state.lastTick).toLocaleTimeString()}</text>
+                        </vstack>
+                        <button
+                            appearance="secondary"
+                            size="small"
+                            onPress={async () => {
+                                setShowLeaderboard(true);
+                                loadLeaderboard();
+                            }}
+                        >
+                            🏆 Authors
+                        </button>
+                    </hstack>
                     <spacer size="small" />
                     <hstack alignment="middle start" width="100%">
                         <text color={Theme.colors.text} size="large" weight="bold">Net Worth: </text>
                         <text color={Theme.colors.gold} size="large" weight="bold">${state.cash.toLocaleString()}</text>
                     </hstack>
-                    <text color={Theme.colors.textDim} size="small">Last Tick: {new Date(state.lastTick).toLocaleTimeString()}</text>
                 </vstack>
 
                 <spacer size="medium" />

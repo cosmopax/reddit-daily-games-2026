@@ -3,3 +3,5 @@ export * from './DailyScheduler';
 export * from './ServiceProxy';
 export * from './Theme';
 export * from './Leaderboard';
+export * from './components/LeaderboardUI';
+export * from './components/LeaderboardUI';

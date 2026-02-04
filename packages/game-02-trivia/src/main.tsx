@@ -1,5 +1,5 @@
 import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
-import { Theme, ServiceProxy, Leaderboard } from 'shared';
+import { Theme, ServiceProxy, Leaderboard, LeaderboardUI } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({
@@ -139,12 +139,42 @@ Devvit.addCustomPostType({
         const { trends: currentTrends, played } = data;
         const showResult = played || result; // If previously played or just played
 
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+        const [lbLoading, setLbLoading] = useState(false);
+
+        const loadLeaderboard = async () => {
+            setLbLoading(true);
+            const lb = new Leaderboard(context, 'game2_trivia');
+            const data = await lb.getTop(10);
+            setLeaderboardData(data);
+            setLbLoading(false);
+        };
+
+        if (showLeaderboard) {
+            return (
+                <LeaderboardUI
+                    title="HIVE MIND ORACLES"
+                    entries={leaderboardData}
+                    isLoading={lbLoading}
+                    onRefresh={loadLeaderboard}
+                    onClose={() => setShowLeaderboard(false)}
+                />
+            );
+        }
+
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background}>
                 {/* Header */}
                 <vstack alignment="center middle" padding="medium" backgroundColor={Theme.colors.surface}>
-                    <text style="heading" size="xlarge" color={Theme.colors.primary} weight="bold">HYPER HIVE MIND</text>
-                    <text size="small" color={Theme.colors.textDim}>Daily Trend Check</text>
+                    <hstack alignment="space-between middle" width="100%">
+                        <spacer />
+                        <vstack alignment="center middle">
+                            <text style="heading" size="xlarge" color={Theme.colors.primary} weight="bold">HYPER HIVE MIND</text>
+                            <text size="small" color={Theme.colors.textDim}>Daily Trend Check</text>
+                        </vstack>
+                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
+                    </hstack>
                 </vstack>
 
                 {/* Split Screen Battle */}

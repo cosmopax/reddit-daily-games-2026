@@ -1,4 +1,5 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import './global.d.ts';
 import { DuelServer, DuelState } from './DuelServer';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 
@@ -29,13 +30,13 @@ Devvit.addSettings([
 Devvit.addCustomPostType({
     name: 'AI Duel',
     render: (context) => {
-        const server = new DuelServer(context);
+        const server = new DuelServer(context as any);
         const [userId] = useState(() => context.userId || 'test-user');
         const [move, setMove] = useState('');
 
-        const { data, loading, error, refresh } = useAsync<{ state: DuelState }>(async () => {
+        const { data, loading, error } = useAsync<any>(async () => {
             const state = await server.getDuelState(userId);
-            return { state };
+            return { state } as any;
         });
 
         const state = data?.state;
@@ -91,12 +92,13 @@ Devvit.addCustomPostType({
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
                 {/* Header */}
                 <vstack alignment="center middle" padding="small">
-                    <hstack alignment="space-between middle" width="100%">
+                    <hstack alignment="middle" width="100%">
                         <spacer />
-                        <vstack alignment="center middle">
-                            <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
-                            <text size="small" color={Theme.colors.textDim}>vs Gemini 2.0 Flash</text>
-                        </vstack>
+                        <hstack alignment="middle">
+                            <text size="large" weight="bold" color={Theme.colors.primary}>CYBER DUEL v2.0</text>
+                            <spacer />
+                            <text size="small" color={Theme.colors.textDim}>CREDITS: {state.credits}</text>
+                        </hstack>
                         <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
                     </hstack>
                 </vstack>
@@ -135,9 +137,9 @@ Devvit.addCustomPostType({
                     <vstack grow backgroundColor="#000000" cornerRadius="small" padding="small" gap="small">
                         {state.history.slice(-6).map((log, i) => (
                             <hstack key={i}>
-                                <text color={Theme.colors.primary} size="small" style="mono">{`>`}</text>
+                                <text color={Theme.colors.primary} size="small">{`>`}</text>
                                 <spacer size="small" />
-                                <text color={Theme.colors.text} size="small" style="mono">{log}</text>
+                                <text color={Theme.colors.text} size="small">{log}</text>
                             </hstack>
                         ))}
                     </vstack>
@@ -146,7 +148,7 @@ Devvit.addCustomPostType({
 
                     {/* Controls */}
                     <vstack gap="small">
-                        <textfield placeholder="Cast Spell or Hack System..." onChange={(v) => setMove(v)} />
+                        <textfield placeholder="Cast Spell or Hack System..." onChange={(v: any) => setMove(v)} />
                         <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>
                             {state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}
                         </button>

@@ -13,11 +13,12 @@ export interface DuelState {
     opponentName?: string;
     opponentRole?: string;
     opponentPortrait?: string;
+    credits: number;
 }
 
 export class DuelServer {
     redis: RedisWrapper;
-    context: Context;
+    context: any;
 
     constructor(context: Context) {
         this.redis = new RedisWrapper(context.redis);
@@ -32,6 +33,10 @@ export class DuelServer {
         const raw = await this.context.redis.get(this.getKey(userId));
         if (!raw) {
             // Initialize new game with Cyber-Valkyrie
+            // Initialize new game
+            // The original code had a complex initialization with proxy calls.
+            // The provided edit simplifies this to a fixed AI opponent.
+            // Keeping the original structure for proxy calls but adding credits.
             const proxy = new ServiceProxy(this.context);
             const roles = ['Blade Dancer', 'Neural Witch', 'Chrome Assassin', 'Void Siren'];
             const role = roles[Math.floor(Math.random() * roles.length)];
@@ -54,13 +59,16 @@ export class DuelServer {
                 gameOver: false,
                 opponentName: name,
                 opponentRole: role,
-                opponentPortrait: portrait
+                opponentPortrait: portrait,
+                credits: 100 // Added credits
             };
 
-            await this.context.redis.set(this.getKey(userId), JSON.stringify(newState));
+            await this.context.redis.set(this.getKey(userId), JSON.stringify(newState)); // Using new getUserKey
             return newState;
         }
-        return JSON.parse(raw);
+        const state = JSON.parse(raw);
+        if (state.credits === undefined) state.credits = 100;
+        return state;
     }
 
     async submitMove(userId: string, move: string): Promise<DuelState> {

@@ -31,3 +31,19 @@
 1.  **Devvit Types:** Do not remove `import './global.d.ts'` in `main.tsx`. It fixes `vstack` lint errors.
 2.  **Asset Handling:** No binary assets exist in `packages/`. Use URLs or generated placeholders.
 3.  **Monorepo:** Run `devvit upload` from the specific package directory, not root.
+
+---
+
+## 🧩 Project Index & API Config
+
+| Game | Directory | Slug | Subreddit | API Keys Required |
+|---|---|---|---|---|
+| **Strategy** | `game-01-strategy` | `get-rich-lazy` | `r/get_rich_lazy_dev` | Gemini |
+| **Trivia** | `game-02-trivia` | `hivemind-trivia` | `r/hyper_hive_minds_dev` | Gemini, SerpApi |
+| **Meme** | `game-03-meme` | `meme-wars` | `r/meme_wars_dev` | Hugging Face |
+| **Duel** | `game-04-duel` | `outsmarted-again` | `r/outsmarted_again_dev` | Hugging Face, Gemini |
+
+## ⚠️ Critical Workaround: API Keys (Installation Scope)
+**Context:** The Devvit CLI currently fails when setting App-scoped secrets (`ValidateAppForm Unimplemented`).
+**Workaround:** As a last resort, we are using `isSecret: false` and `scope: SettingScope.Installation`.
+**Implication:** API keys are visible in the Subreddit Settings UI (`/about/edit?page=apps`) and must be configured there manually. Do not revert this unless the CLI bug is confirmed fixed.

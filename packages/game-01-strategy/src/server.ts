@@ -1,5 +1,5 @@
 import { Context, JobContext } from '@devvit/public-api';
-import { RedisWrapper, DailyScheduler, ServiceProxy } from 'shared';
+import { RedisWrapper, DailyScheduler, ServiceProxy, Leaderboard } from 'shared';
 import { ASSETS, AssetType, UserState, ExecutiveAdvisor } from './types';
 
 const USER_KEY_PREFIX = 'user:v1:';
@@ -189,6 +189,30 @@ export class GameStrategyServer {
         // We will store advisors as a JSON blob in a separate key or pack it as 'advisors_json' string?
         // Let's store as 'advisors_json' field.
         await this.saveWithAdvisors(userId, state, newAdvisors);
+
+        // Sync to Leaderboard (High Score = Net Worth)
+        const lb = new Leaderboard(this.context, 'game1_strategy');
+        // We need username. Context doesn't always have it in older triggers, but useful here.
+        // We'll try to get it from context if possible, or fetch.
+        // For now, pass 'Trader' if unknown, but usually we can get it or cache it.
+        // Assuming we rely on client to pass username? No, server side.
+        // We will just use userId for now, update metadata later?
+        // Actually, let's fetch user if we can.
+        let username = 'Unknown CEO';
+        try {
+            const user = await this.context.reddit.getUserById(userId);
+            if (user) username = user.username;
+        } catch (e) { }
+
+        // NetWorth calculation might be projected. Let's use the current 'cash + assetVal'.
+        // Recalculate net worth to be sure
+        let currentNetWorth = state.cash;
+        Object.keys(ASSETS).forEach(id => {
+            const count = state.assets[id as AssetType] || 0;
+            currentNetWorth += count * ASSETS[id as AssetType].cost;
+        });
+
+        await lb.submitScore(userId, username, currentNetWorth, advisor.portraitUrl);
 
         return advisor;
     }

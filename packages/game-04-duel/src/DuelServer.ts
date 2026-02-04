@@ -1,5 +1,5 @@
 import { Context } from '@devvit/public-api';
-import { RedisWrapper, ServiceProxy } from 'shared';
+import { RedisWrapper, ServiceProxy, Leaderboard } from 'shared';
 
 const USER_HEALTH = 100;
 const AI_HEALTH = 100;
@@ -79,6 +79,32 @@ export class DuelServer {
             state.gameOver = true;
             state.history.push("VICTORY!");
             await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+
+            // Leaderboard Sync
+            const lb = new Leaderboard(this.context, 'game4_duel');
+            let username = 'Cyber Duelist';
+            try {
+                const user = await this.context.reddit.getUserById(userId);
+                if (user) username = user.username;
+            } catch (e) { }
+
+            // Increment separate win counter or just use score?
+            // For leaderboard, we want "Total Wins".
+            // We need to track wins in Redis separately or just increment score?
+            // ZINCRBY is perfect for this. But Leaderboard class used ZADD.
+            // Let's manually increment for now or update Leaderboard class.
+            // Actually, let's just create a 'wins' key and read it, then submit?
+            // Or just use ZINCRBY directly on the leaderboard key here?
+            // Cleanest: Leaderboard.incrementScore(userId, 1). 
+            // I'll stick to manual ZINCRBY here for speed, or basic submitScore if I track wins in state.
+            // Let's track wins in UserState? State is reset per game.
+            // We need a persistent user Stats key.
+            // QUICK IMPLEMENTATION: Just increment ZSET score directly.
+            await this.context.redis.zIncrBy(lb['getKey'](), userId, 1);
+            // Update metadata? Only if we have it?
+            // lb.submitScore overwrites score. 
+            // We'll skip metadata update for now on every win, or separate call.
+
             return state;
         }
 

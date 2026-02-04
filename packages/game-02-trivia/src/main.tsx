@@ -1,10 +1,12 @@
-import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
+import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { Theme, ServiceProxy, Leaderboard, LeaderboardUI } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({
     redditAPI: true,
-    http: true,
+    http: {
+        domains: ['serpapi.com', 'generativelanguage.googleapis.com']
+    },
     redis: true,
     scheduler: {
         daily_reset: async (event, context) => {
@@ -21,14 +23,12 @@ Devvit.addSettings([
         label: 'SerpApi Key (Google Trends)',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
 ]);
 

@@ -1,10 +1,12 @@
-import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { DuelServer, DuelState } from './DuelServer';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
-    http: true,
+    http: {
+        domains: ['generativelanguage.googleapis.com', 'api.replicate.com', 'router.huggingface.co']
+    },
     redis: true,
 });
 
@@ -15,14 +17,12 @@ Devvit.addSettings([
         label: 'Hugging Face API Token',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
 ]);
 

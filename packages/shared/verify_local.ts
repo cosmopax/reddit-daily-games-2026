@@ -25,9 +25,9 @@ async function main() {
 
     try {
         // 1. Trends
-        console.log("\n[1] Testing fetchDailyTrend (SerpApi)...");
-        const trend = await proxy.fetchDailyTrend();
-        console.log(`Result: ${trend}`);
+        console.log("\n[1] Testing fetchDailyTrends (SerpApi)...");
+        const trends = await proxy.fetchDailyTrends(2);
+        console.log(`Result: ${JSON.stringify(trends)}`);
 
         // 2. Gemini
         console.log("\n[2] Testing generateAiMove (Gemini)...");

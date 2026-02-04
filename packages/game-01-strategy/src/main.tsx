@@ -6,7 +6,9 @@ import { AssetType, AssetConfig, ASSETS, UserState } from './types';
 
 Devvit.configure({
     redditAPI: true,
-    http: true,
+    http: {
+        domains: ['generativelanguage.googleapis.com']
+    },
     redis: true,
 });
 
@@ -17,7 +19,6 @@ Devvit.addSettings([
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
 ]);
 

@@ -1,10 +1,12 @@
-import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({
     redditAPI: true,
-    http: true,
+    http: {
+        domains: ['api.replicate.com', 'router.huggingface.co']
+    },
     redis: true,
     scheduler: {
         process_queue: async (event, context) => {
@@ -21,7 +23,6 @@ Devvit.addSettings([
         label: 'Hugging Face API Token',
         type: 'string',
         isSecret: false,
-        scope: SettingScope.Installation,
     },
 ]);
 

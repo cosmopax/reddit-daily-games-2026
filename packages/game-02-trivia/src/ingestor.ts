@@ -1,6 +1,8 @@
 import { Context } from '@devvit/public-api';
-import { RedisWrapper, DailyScheduler } from 'shared';
+import { RedisWrapper, DailyScheduler, ServiceProxy } from 'shared';
 
+const TREND_A_KEY = 'daily_trend_a';
+const TREND_B_KEY = 'daily_trend_b';
 const TRENDS_KEY = 'daily:trends';
 const ARCHIVE_KEY = 'archive:trends';
 
@@ -23,17 +25,28 @@ export class TrendIngestor {
         console.log("Starting Daily Ingestion...");
 
         // 1. Archive Yesterday
-        const currentTrend = await this.context.redis.get(TRENDS_KEY);
-        if (currentTrend) {
-            await this.context.redis.zAdd(ARCHIVE_KEY, { member: currentTrend, score: Date.now() });
+        const currentA = await this.context.redis.get(TREND_A_KEY);
+        const currentB = await this.context.redis.get(TREND_B_KEY);
+        if (currentA && currentB) {
+            await this.context.redis.zAdd(ARCHIVE_KEY, {
+                member: JSON.stringify({ a: JSON.parse(currentA), b: JSON.parse(currentB) }),
+                score: Date.now()
+            });
         }
 
-        // 2. Fetch New Trend via Proxy
+        // 2. Fetch New Trends via Proxy
         const proxy = new ServiceProxy(this.context);
-        const newTrend = await proxy.fetchDailyTrend();
+        const trends = await proxy.fetchDailyTrends(2);
+        const trendA = trends[0];
+        const trendB = trends[1];
+        if (!trendA || !trendB) {
+            throw new Error('Not enough trend data returned by ServiceProxy');
+        }
 
         // 3. Update State
-        await this.context.redis.set(TRENDS_KEY, newTrend);
-        console.log(`Updated Trend: ${newTrend}`);
+        await this.context.redis.set(TREND_A_KEY, JSON.stringify(trendA));
+        await this.context.redis.set(TREND_B_KEY, JSON.stringify(trendB));
+        await this.context.redis.set(TRENDS_KEY, JSON.stringify(trends));
+        console.log(`Updated Trends: ${trendA.query} vs ${trendB.query}`);
     }
 }

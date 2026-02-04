@@ -10,6 +10,9 @@ export interface DuelState {
     history: string[]; // Log of moves
     turn: 'user' | 'ai';
     gameOver: boolean;
+    opponentName?: string;
+    opponentRole?: string;
+    opponentPortrait?: string;
 }
 
 export class DuelServer {
@@ -28,13 +31,34 @@ export class DuelServer {
     async getDuelState(userId: string): Promise<DuelState> {
         const raw = await this.context.redis.get(this.getKey(userId));
         if (!raw) {
-            return {
+            // Initialize new game with Cyber-Valkyrie
+            const proxy = new ServiceProxy(this.context);
+            const roles = ['Blade Dancer', 'Neural Witch', 'Chrome Assassin', 'Void Siren'];
+            const role = roles[Math.floor(Math.random() * roles.length)];
+            const name = `Valkyrie ${Math.floor(Math.random() * 99)}`;
+
+            // Generate "Hot" portrait
+            let portrait = '';
+            try {
+                portrait = await proxy.generateCharacterPortrait(role, 'Cyber-District-9', 'Valkyrie');
+            } catch (e) {
+                console.error("Portrait gen failed", e);
+                portrait = "https://placeholder.com/valkyrie_fallback.png";
+            }
+
+            const newState: DuelState = {
                 userHealth: USER_HEALTH,
                 aiHealth: AI_HEALTH,
-                history: ["Battle Started!"],
+                history: [`Duel Protocol Initiated. Opponent: ${name} (${role})`],
                 turn: 'user',
                 gameOver: false,
+                opponentName: name,
+                opponentRole: role,
+                opponentPortrait: portrait
             };
+
+            await this.context.redis.set(this.getKey(userId), JSON.stringify(newState));
+            return newState;
         }
         return JSON.parse(raw);
     }

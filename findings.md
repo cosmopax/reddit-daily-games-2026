@@ -1,46 +1,55 @@
 # Findings & Decisions
 
-## Requirements
-- Read the provided external handover document and project docs thoroughly.
-- Resolve persistent API integration issues in this workspace.
-- Verify with local commands where possible.
-- Keep a clear log and append to `cooperation_documentation.md` after meaningful changes.
+## Requirements (Current Task)
+- Execute full live verification flow for all 4 games per runbook.
+- Gather evidence against per-game acceptance criteria (Strategy/Trivia/Meme/Duel).
+- Apply targeted fixes if failures are observed.
+- Produce `docs/VERIFICATION_REPORT_2026-02-04.md`.
+- Append `cooperation_documentation.md` (append-only), then commit and push.
 
-## Research Findings
-- External handover (2026-02-03) reports:
-- SerpApi path fixed by removing deprecated `frequency=daily`.
-- Gemini integration reaches correct endpoint/model but hits `429 RESOURCE_EXHAUSTED` for the given key/project.
-- Image generation succeeds via fallback to Hugging Face when Replicate returns `402`.
-- Latest workspace brain handover (2026-02-04) marks a separate blocker: Devvit settings deadlock (`ValidateAppForm Unimplemented`) led to insecure installation-scoped workaround.
-- Current repo has concrete integration regressions:
-- `packages/shared/verify_local.ts` calls non-existent `fetchDailyTrend()` method.
-- `packages/game-02-trivia/src/ingestor.ts` uses `fetchDailyTrend()` and misses `ServiceProxy` import.
-- `packages/game-01-strategy/src/main.tsx` uses `SettingScope` but does not import it.
-- All games configure `http: true` without explicit domain allow-list requests; external APIs likely fail in deployed Devvit installations for non-global domains.
-- `ServiceProxy.generateImage()` reports Hugging Face success but returns placeholder URL instead of actual image bytes/URL.
+## Operational Findings
+- Required files were read first and used as authoritative:
+  - `docs/NEXT_CODEX_HANDOVER_2026-02-04.md`
+  - `docs/DEVVIT_OPERATIONS_RUNBOOK.md`
+  - `CODEX_HANDOVER_3.md`
+  - `cooperation_documentation.md`
+  - `packages/shared/src/ServiceProxy.ts`
+- Devvit baseline:
+  - `npx devvit whoami` => `u/cosmo-pax`
+  - `npx devvit version` => `0.12.11`
+- Playtest readiness confirmed for all 4 apps; playtest installs now:
+  - Strategy: `v0.0.8.2`
+  - Trivia: `v0.0.6.2`
+  - Meme: `v0.0.7.1`
+  - Duel: `v0.0.7.1`
+- Logs streams start correctly for all 4 installations, but sampled windows emitted no app-level runtime lines.
+- No explicit API-key/auth error lines were observed in sampled log windows.
+
+## Evidence Quality Assessment
+- Strategy criterion (no API-key errors): partially supported by sampled logs (no matching errors observed).
+- Trivia/Meme/Duel criteria are not certifiable from this run alone because no gameplay-triggered runtime events were emitted in log windows.
+- Browser automation attempt via `playwright` skill could not be completed in this session:
+  - `ENOTFOUND registry.npmjs.org` during wrapper execution.
+  - subsequent `playwright-cli` binary resolution failure.
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Re-validate current repository code against handover claims before changing behavior | Prior attempts may already include partial fixes; avoid regressions |
-| Prioritize runtime integration fixes over cosmetic/typing-only cleanups | User asked to resolve API integration blockers specifically |
-| Keep installation-scoped key workaround for now but harden runtime retrieval and HTTP domain requests | Latest authoritative handover says App-scope CLI path is platform-blocked (`ValidateAppForm Unimplemented`) |
-| Convert Hugging Face binary responses into `data:` URLs | Avoid fake placeholders and return usable image payloads without external asset hosting |
+| Keep verification outcomes explicit (`PASS limited` vs `INCONCLUSIVE`) | Prevent over-claiming stability without event evidence |
+| Do not change runtime code without concrete failure reproduction | Avoid speculative regressions late in validation cycle |
+| Capture blockers as operational issues in the verification report | Gives next operator an immediate, actionable follow-up path |
 
 ## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
-| `verify_local.ts` called non-existent `fetchDailyTrend()` | Updated to `fetchDailyTrends(2)` and added compatibility helper in proxy |
-| Deployed apps likely missing HTTP allow-list domains for external APIs | Added explicit per-game `http.domains` in `Devvit.configure` |
-| Trivia ingestor used old method name and lacked `ServiceProxy` import | Repaired imports and ingestion logic to persist two trend records |
+| Sandbox EPERM for Devvit cache path | Used approved escalated `npx devvit` execution path |
+| Port `5678` in use during overlapping sessions | Terminated stale listener and reran sequentially |
+| Playwright-based UI automation blocked | Documented as open verification blocker |
 
-## Resources
-- `/Users/cosmopax/.gemini/antigravity/brain/68b5a851-330a-439c-a357-62e880a64ad9/handover_api_integration.md`
-- `CODEX_HANDOVER_2.md`
-- `api_integration_mission.md`
-- `docs/ARCHITECTURE.md`
+## Resources Used
+- `docs/NEXT_CODEX_HANDOVER_2026-02-04.md`
+- `docs/DEVVIT_OPERATIONS_RUNBOOK.md`
+- `CODEX_HANDOVER_3.md`
+- `cooperation_documentation.md`
 - `packages/shared/src/ServiceProxy.ts`
-- `packages/shared/verify_local.ts`
-
-## Visual/Browser Findings
-- None.
+- `docs/VERIFICATION_REPORT_2026-02-04.md`

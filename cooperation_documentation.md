@@ -15,6 +15,13 @@
 
 ## 📝 Change Log (Reverse Chronological)
 
+### [2026-02-04 11:03] - AGENTS Workflow Refresh (Agent: Codex)
+- **Intent:** Update AGENTS.md with newly verified repo workflows/commands only.
+- **Outcome:** Added a compact "Newly confirmed workflows/commands" section in `AGENTS.md`.
+- **Commands:** `sed -n '1,220p' README.md`; `sed -n '1,220p' scripts/setup_workspace.sh`; `sed -n '1,220p' cooperation_documentation.md`; `date '+%Y-%m-%d %H:%M'`.
+- **Tests:** Documentation-only change; no runtime tests executed.
+- **Git/Worktree:** Uncommitted local changes in current checkout.
+
 ### [2026-02-04 03:52] - Feature Freeze & Handover (Agent: Antigravity)
 - **Action:** Completed "Social & Strategic" Phase.
 - **Artifacts:** 

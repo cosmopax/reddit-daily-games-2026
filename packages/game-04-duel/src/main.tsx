@@ -26,6 +26,25 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create AI Duel Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const subreddit = await context.reddit.getCurrentSubreddit();
+        const post = await context.reddit.submitPost({
+            title: 'Outsmarted Again - AI Duel',
+            subredditName: subreddit.name,
+            preview: (
+                <vstack height="100%" width="100%" alignment="middle center">
+                    <text>Loading AI DUEL...</text>
+                </vstack>
+            ),
+        });
+        context.ui.navigateTo(post);
+        context.ui.showToast('Created AI Duel post');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'AI Duel',
     render: (context) => {

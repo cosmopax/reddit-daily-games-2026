@@ -133,3 +133,108 @@
 - **Commit/Worktree:**
   - `commit`: `fe8d39d`
   - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
+
+### [2026-02-04 13:50] - UX Unblock: Menu-Based Post Creation (Agent: Codex GPT-5)
+- **Intent:** Unblock gameplay creation flow when Reddit composer does not show an Apps tab/custom post picker for installed Devvit games.
+- **Outcome:**
+  - Added a subreddit menu action in each game app to auto-create a playable game post via `context.reddit.submitPost(...)`.
+  - Deployed updated playtest versions to all 4 target subreddits.
+  - Users can now start each game without relying on the missing composer Apps tab.
+- **Commands:**
+  - `apply_patch` on:
+    - `packages/game-01-strategy/src/main.tsx`
+    - `packages/game-02-trivia/src/main.tsx`
+    - `packages/game-03-meme/src/main.tsx`
+    - `packages/game-04-duel/src/main.tsx`
+  - `npx devvit playtest get_rich_lazy_dev`
+  - `npx devvit playtest hyper_hive_minds_dev`
+  - `npx devvit playtest meme_wars_dev`
+  - `npx devvit playtest outsmarted_again_dev`
+  - `npx devvit list installs <subreddit>` (all four)
+- **Tests:**
+  - Playtest deploy success: Strategy `v0.0.8.3`, Trivia `v0.0.6.3`, Meme `v0.0.7.2`, Duel `v0.0.7.2` ✅
+  - Install version confirmation on all four target subreddits ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
+
+### [2026-02-04 14:03] - UX Fix v2: Navigate to Created Post (Agent: Codex GPT-5)
+- **Intent:** Eliminate confusion after menu-based post creation by auto-opening the created game post immediately.
+- **Outcome:**
+  - Updated all four menu handlers to capture `submitPost(...)` return value and call `context.ui.navigateTo(post)`.
+  - Redeployed all four playtest apps.
+  - Users no longer need to manually find newly created posts in feed sorting.
+- **Commands:**
+  - `apply_patch` on:
+    - `packages/game-01-strategy/src/main.tsx`
+    - `packages/game-02-trivia/src/main.tsx`
+    - `packages/game-03-meme/src/main.tsx`
+    - `packages/game-04-duel/src/main.tsx`
+  - `npx devvit playtest get_rich_lazy_dev`
+  - `npx devvit playtest hyper_hive_minds_dev`
+  - `npx devvit playtest meme_wars_dev`
+  - `npx devvit playtest outsmarted_again_dev`
+  - `npx devvit list installs <subreddit>` (all four)
+- **Tests:**
+  - Playtest deploy success: Strategy `v0.0.8.4`, Trivia `v0.0.6.4`, Meme `v0.0.7.3`, Duel `v0.0.7.3` ✅
+  - Install version confirmation on all four target subreddits ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
+
+### [2026-02-04 14:08] - Runtime Fix: Strategy infinite loading (Agent: Codex GPT-5)
+- **Intent:** Resolve endless loading in `get-rich-lazy` game post reported by user on desktop web.
+- **Outcome:**
+  - Investigated live logs and identified root cause: `ReferenceError: GameStrategyServer is not defined` in `packages/game-01-strategy/src/main.tsx`.
+  - Restored missing import `import { GameStrategyServer } from './server';`.
+  - Redeployed strategy app and verified latest install version is `v0.0.8.5`.
+- **Commands:**
+  - `npx devvit logs get_rich_lazy_dev --since 30m --verbose --show-timestamps`
+  - `apply_patch` on `packages/game-01-strategy/src/main.tsx`
+  - `npx devvit playtest get_rich_lazy_dev`
+  - `npx devvit list installs get_rich_lazy_dev`
+- **Tests:**
+  - Error signature captured and resolved in code (`GameStrategyServer is not defined`) ✅
+  - Strategy playtest redeploy successful (`v0.0.8.5`) ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
+
+### [2026-02-04 14:47] - Gameplay Loop Fix: Strategy bootstrap cash (Agent: Codex GPT-5)
+- **Intent:** Improve first-play experience after user feedback (game felt non-playable/empty) by removing zero-cash dead-start.
+- **Outcome:**
+  - Added starter-cash bootstrap logic in strategy server: if user has no assets and less than first-asset cost, seed to first-buy threshold.
+  - This unblocks immediate first action and prevents dead-account states with 0 cash / 0 assets.
+  - Redeployed strategy app.
+- **Commands:**
+  - `apply_patch` on `packages/game-01-strategy/src/server.ts`
+  - `npx devvit playtest get_rich_lazy_dev`
+  - `npx devvit list installs get_rich_lazy_dev`
+- **Tests:**
+  - Strategy playtest deploy success (`v0.0.8.6`) ✅
+  - Install version confirmation (`get-rich-lazy v0.0.8.6`) ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
+
+### [2026-02-04 15:25] - Strategy Feel Upgrade pass (Agent: Codex GPT-5)
+- **Intent:** Address user feedback that Strategy felt generic/flat by improving first-session loop and adding character-driven flavor with stronger in-game feedback.
+- **Outcome:**
+  - Added starter-cash bootstrap safety in server to avoid dead-start accounts.
+  - Upgraded Strategy UI to a more narrative style (`Story Mode`) with:
+    - character dialogue section (`Oracle Nyx` / `CEO Vex`) and `Talk` interaction,
+    - clearer economy telemetry (net worth, liquid cash, hourly income, assets owned),
+    - mission prompt (next buy target),
+    - highlighted affordance states and immediate refresh after buy.
+  - Redeployed Strategy app to playtest.
+- **Commands:**
+  - `apply_patch` on `packages/game-01-strategy/src/server.ts`
+  - `apply_patch` on `packages/game-01-strategy/src/main.tsx`
+  - `npx devvit playtest get_rich_lazy_dev`
+  - `npx devvit logs get_rich_lazy_dev --since 10m --verbose --show-timestamps`
+- **Tests:**
+  - Strategy playtest deploy success (`v0.0.8.7`) ✅
+  - Logs stream opens with no immediate runtime error in sample window ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`

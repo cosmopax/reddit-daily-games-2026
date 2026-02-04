@@ -3,6 +3,7 @@ import { RedisWrapper, DailyScheduler, ServiceProxy, Leaderboard } from 'shared'
 import { ASSETS, AssetType, UserState, ExecutiveAdvisor } from './types';
 
 const USER_KEY_PREFIX = 'user:v1:';
+const STARTER_CASH = ASSETS.lemonade_stand.cost;
 
 export class GameStrategyServer {
     redis: RedisWrapper;
@@ -47,6 +48,18 @@ export class GameStrategyServer {
             try {
                 advisors = JSON.parse(data['advisors_json'] as unknown as string);
             } catch (e) { }
+        }
+
+        // Prevent dead-start accounts: users must be able to buy at least one first asset.
+        // This also recovers previously stuck users with 0 cash and 0 assets.
+        if (assetValue === 0 && cash < STARTER_CASH) {
+            cash = STARTER_CASH;
+            await this.redis.savePackedState(this.getUserKey(userId), 'state', {
+                cash,
+                lastTick,
+                advisors_json: JSON.stringify(advisors),
+                ...Object.fromEntries(Object.keys(ASSETS).map((id) => [`asset_${id}`, assets[id] || 0])),
+            });
         }
 
         // Lazy Evaluation: Apply pending income

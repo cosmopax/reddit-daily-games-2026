@@ -26,6 +26,25 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create Meme Wars Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const subreddit = await context.reddit.getCurrentSubreddit();
+        const post = await context.reddit.submitPost({
+            title: 'Meme Wars - Prompt Battle',
+            subredditName: subreddit.name,
+            preview: (
+                <vstack height="100%" width="100%" alignment="middle center">
+                    <text>Loading MEME WARS...</text>
+                </vstack>
+            ),
+        });
+        context.ui.navigateTo(post);
+        context.ui.showToast('Created Meme Wars post');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'Meme Wars',
     render: (context) => {

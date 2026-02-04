@@ -32,6 +32,25 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create Hive Mind Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const subreddit = await context.reddit.getCurrentSubreddit();
+        const post = await context.reddit.submitPost({
+            title: 'Hive Mind Gauntlet - Daily Challenge',
+            subredditName: subreddit.name,
+            preview: (
+                <vstack height="100%" width="100%" alignment="middle center">
+                    <text>Loading HYPER HIVE MIND...</text>
+                </vstack>
+            ),
+        });
+        context.ui.navigateTo(post);
+        context.ui.showToast('Created Hive Mind post');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
     render: (context) => {

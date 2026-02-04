@@ -1,7 +1,8 @@
-import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
-import { AssetType, AssetConfig, ASSETS, UserState } from './server';
-import { Theme, LeaderboardUI } from 'shared';
-import { ASSETS, AssetType, UserState } from './types';
+import { Devvit, useState, useAsync } from '@devvit/public-api';
+import './global.d.ts';
+import { ServiceProxy, Theme, LeaderboardUI } from 'shared';
+import { AssetType, AssetConfig, ASSETS, UserState } from './types';
+
 
 Devvit.configure({
     redditAPI: true,
@@ -49,7 +50,7 @@ Devvit.addCustomPostType({
         const onBuy = async (assetId: AssetType) => {
             const success = await server.buyAsset(userId, assetId);
             if (success) {
-                context.ui.showToast(`Bought ${ASSETS[assetId].name}!`);
+                context.ui.showToast(`Bought ${ASSETS[assetId].name} !`);
                 // We can't easily refresh useAsync in 0.11 without a hack, 
                 // implies we should just set local optimistic state or use a state manager.
                 // For MVP, we presume the next render or interval picks it up.

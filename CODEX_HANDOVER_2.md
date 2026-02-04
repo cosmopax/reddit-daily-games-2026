@@ -95,3 +95,31 @@
     devvit install [INSERT_YOUR_SUBREDDIT]
     ```
 3.  **Verify:** Check the subreddit's "Developers" tab or the post created by the app.
+
+---
+
+## 7. Strategic & Creative Handover
+**Reference Artifact:** `strategic_submission_plan.md` (Located in Brain / workspace root)
+
+### Key Narrative Angles (for Submission Forms)
+- **Game 1:** "Lazy Evaluation" Incremental Strategy.
+- **Game 2:** "Hive Mind" vs. Reddit Trends.
+- **Game 3:** "Scientific" Meme Generation (Flux.1).
+- **Game 4:** Man vs. Machine (Gemini 2.0).
+
+### Automation Strategy
+- **Town Crier Bot:** Use `scheduler/daily_announcement` to post/pin daily threads.
+### Multimedia Handover
+**Reference Artifact:** `demo_video_script.md` (Located in Brain / workspace root)
+- **Script:** 60-second high-energy "Scientific Premium" demo.
+- **Asset Manifest:** List of required Icons, Banners, and Screenshots detailed in the script file.
+
+---
+
+## 8. Multi-Agent Coordination
+**Protocol:** All future changes **MUST** be logged in the coordination file to prevent regressions.
+- **Log File:** `cooperation_documentation.md` (Project Root)
+- **Rule:** Check "Active Locks" before editing core shared components.
+
+
+

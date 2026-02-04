@@ -65,36 +65,70 @@ Devvit.addCustomPostType({
 
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
-                <hstack alignment="center middle">
+                {/* Header */}
+                <vstack alignment="center middle" padding="small">
                     <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
-                </hstack>
-
-                <hstack alignment="space-between middle" width="100%" padding="small">
-                    <vstack>
-                        <text weight="bold" color={Theme.colors.secondary}>YOU</text>
-                        <text color={Theme.colors.text} size="large">{state.userHealth} HP</text>
-                    </vstack>
-                    <text color={Theme.colors.textDim}>VS</text>
-                    <vstack alignment="end">
-                        <text weight="bold" color={Theme.colors.danger}>AI</text>
-                        <text color={Theme.colors.text} size="large">{state.aiHealth} HP</text>
-                    </vstack>
-                </hstack>
-
-                <vstack grow backgroundColor={Theme.colors.surface} cornerRadius="medium" padding="small" gap="small">
-                    {state.history.slice(-5).map((log, i) => (
-                        <text key={i} color={Theme.colors.text}>{log}</text>
-                    ))}
+                    <text size="small" color={Theme.colors.textDim}>vs Gemini 2.0 Flash</text>
                 </vstack>
 
-                <hstack padding="small" gap="medium">
-                    <textfield placeholder="Cast Spell..." onChange={(v) => setMove(v)} />
-                    <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>ATTACK</button>
-                </hstack>
+                <spacer size="medium" />
 
-                {state.gameOver && (
-                    <button appearance="bordered" onPress={onReset}>PLAY AGAIN</button>
-                )}
+                {/* Battle Arena */}
+                <vstack grow backgroundColor={Theme.colors.surface} cornerRadius="medium" padding="medium" border="thin" borderColor={Theme.colors.surfaceHighlight}>
+
+                    {/* HUD */}
+                    <hstack alignment="space-between middle" width="100%" padding="small">
+                        {/* Player HUD */}
+                        <vstack alignment="start">
+                            <text weight="bold" color={Theme.colors.secondary}>COMMANDER</text>
+                            <text color={Theme.colors.success} size="xlarge" weight="bold">{state.userHealth} HP</text>
+                            <vstack width="100px" height="4px" backgroundColor="#333333" cornerRadius="small">
+                                <vstack width={`${state.userHealth}%`} height="100%" backgroundColor={Theme.colors.success} cornerRadius="small" />
+                            </vstack>
+                        </vstack>
+
+                        <text color={Theme.colors.warning} size="large" weight="bold">VS</text>
+
+                        {/* AI HUD */}
+                        <vstack alignment="end">
+                            <text weight="bold" color={Theme.colors.danger}>GEMINI CORE</text>
+                            <text color={Theme.colors.danger} size="xlarge" weight="bold">{state.aiHealth} HP</text>
+                            <vstack width="100px" height="4px" backgroundColor="#333333" cornerRadius="small">
+                                <vstack width={`${state.aiHealth}%`} height="100%" backgroundColor={Theme.colors.danger} cornerRadius="small" />
+                            </vstack>
+                        </vstack>
+                    </hstack>
+
+                    <spacer size="medium" />
+
+                    {/* Battle Log (Terminal Style) */}
+                    <vstack grow backgroundColor="#000000" cornerRadius="small" padding="small" gap="small">
+                        {state.history.slice(-6).map((log, i) => (
+                            <hstack key={i}>
+                                <text color={Theme.colors.primary} size="small" style="mono">{`>`}</text>
+                                <spacer size="small" />
+                                <text color={Theme.colors.text} size="small" style="mono">{log}</text>
+                            </hstack>
+                        ))}
+                    </vstack>
+
+                    <spacer size="medium" />
+
+                    {/* Controls */}
+                    <vstack gap="small">
+                        <textfield placeholder="Cast Spell or Hack System..." onChange={(v) => setMove(v)} />
+                        <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>
+                            {state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}
+                        </button>
+                    </vstack>
+
+                    {state.gameOver && (
+                        <vstack padding="small" alignment="center middle">
+                            <text color={Theme.colors.gold} weight="bold" size="large">GAME OVER</text>
+                            <button appearance="bordered" onPress={onReset}>REBOOT SYSTEM</button>
+                        </vstack>
+                    )}
+                </vstack>
 
                 {/* Brand Footer */}
                 <hstack alignment="center middle" padding="small">

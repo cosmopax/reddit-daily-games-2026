@@ -62,56 +62,40 @@ Devvit.addCustomPostType({
         if (!state) return <vstack><text>Error loading state</text></vstack>;
 
         return (
-            <vstack height="100%" width="100%" backgroundColor="#000000" padding="medium">
-                <text style="heading" color="#00FF00">GET RICH LAZY</text>
-                <hstack alignment="middle start" width="100%">
-                    <text color="#FFFFFF">Net Worth: ${state.cash}</text>
-                    <text color="#AAAAAA">Last Tick: {new Date(state.lastTick).toLocaleTimeString()}</text>
-                </hstack>
+            <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
+                {/* Header with App-Scope Gradient */}
+                <vstack padding="medium" cornerRadius="medium">
+                    <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">GET RICH LAZY</text>
+                    <spacer size="small" />
+                    <hstack alignment="middle start" width="100%">
+                        <text color={Theme.colors.text} size="large" weight="bold">Net Worth: </text>
+                        <text color={Theme.colors.gold} size="large" weight="bold">${state.cash.toLocaleString()}</text>
+                    </hstack>
+                    <text color={Theme.colors.textDim} size="small">Last Tick: {new Date(state.lastTick).toLocaleTimeString()}</text>
+                </vstack>
 
-                <vstack gap="small" padding="small">
-                    <text style="heading" size="small" color="#FFFF00">Assets</text>
-                    {Object.values(ASSETS).map((asset) => (
-                        <hstack key={asset.id} alignment="middle set" backgroundColor="#222222" padding="small" cornerRadius="small">
-                            <vstack backgroundColor={context.ui.theme.colors.background} height="100%" width="100%" padding="medium">
+                <spacer size="medium" />
 
-                                {/* Header */}
-                                <hstack alignment="center middle" padding="medium">
-                                    <text size="xlarge" weight="bold" color={context.ui.theme.colors.primary}>GET RICH LAZY</text>
-                                    <spacer size="medium" />
-                                    <text color={context.ui.theme.colors.textDim}>Tick: {state.lastTick}</text>
-                                </hstack>
+                <vstack gap="small" padding="small" grow>
+                    <text style="heading" size="medium" color={Theme.colors.secondary}>Portfolio</text>
 
-                                {/* Stats Card */}
-                                <vstack cornerRadius="medium" backgroundColor={context.ui.theme.colors.surface} padding="medium" border="thin" borderColor={context.ui.theme.colors.textDim}>
-                                    <text size="large" color={context.ui.theme.colors.gold}>${state.cash.toLocaleString()}</text>
-                                    <text size="small" color={context.ui.theme.colors.text}>Income: ${state.income}/hr</text>
+                    <vstack gap="small">
+                        {Object.entries(ASSETS).map(([key, config]) => (
+                            <hstack key={key} backgroundColor={Theme.colors.surface} padding="medium" cornerRadius="medium" alignment="center middle" border="thin" borderColor={Theme.colors.surfaceHighlight}>
+                                <vstack grow>
+                                    <text weight="bold" color={Theme.colors.text} size="large">{config.name}</text>
+                                    <text size="small" color={Theme.colors.success}>+${config.incomePerHour}/hr</text>
                                 </vstack>
-
-                                <spacer size="medium" />
-
-                                {/* Assets Grid */}
-                                <vstack gap="small">
-                                    {Object.entries(ASSETS).map(([key, config]) => (
-                                        <hstack key={key} backgroundColor={context.ui.theme.colors.surface} padding="small" cornerRadius="small" alignment="center middle">
-                                            <vstack grow>
-                                                <text weight="bold" color={context.ui.theme.colors.text}>{config.name}</text>
-                                                <text size="small" color={context.ui.theme.colors.success}>+${config.incomePerHour}/hr</text>
-                                            </vstack>
-                                            <button
-                                                onPress={() => onBuy(key as AssetType)}
-                                                disabled={state.cash < config.cost}
-                                                appearance="primary"
-                                            >
-                                                Buy (${config.cost})
-                                            </button>
-                                        </hstack>
-                                    ))}
-                                </vstack>
-
-                            </vstack>
-                        </hstack>
-                    ))}
+                                <button
+                                    onPress={() => onBuy(key as AssetType)}
+                                    disabled={state.cash < config.cost}
+                                    appearance="primary"
+                                >
+                                    Buy (${config.cost.toLocaleString()})
+                                </button>
+                            </hstack>
+                        ))}
+                    </vstack>
                 </vstack>
 
                 {/* Brand Footer */}

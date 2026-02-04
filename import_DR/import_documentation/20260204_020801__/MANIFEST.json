@@ -1,0 +1,258 @@
+{
+  "source": "Devvit Developer Platform",
+  "url": "https://developers.reddit.com/docs",
+  "mode": "raw",
+  "scraped_at": "2026-02-04T02:08:01.844926",
+  "document_count": 49,
+  "error_count": 1,
+  "documents": [
+    {
+      "url": "https://developers.reddit.com/docs",
+      "title": "docs",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/discord",
+      "title": "Reddit Developer Platform",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/examples/template-library",
+      "title": "template-library",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/examples/app-showcase",
+      "title": "app-showcase",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_overview",
+      "title": "payments_overview",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/devvit_rules",
+      "title": "devvit_rules",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/changelog",
+      "title": "changelog",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/scheduler",
+      "title": "scheduler",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/0.11",
+      "title": "0.11",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/launch/launch-guide",
+      "title": "launch-guide",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/reddit-api",
+      "title": "reddit-api",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/migrate/devvit-singleton",
+      "title": "devvit-singleton",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/realtime/overview",
+      "title": "overview",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/blog",
+      "title": "blog",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next",
+      "title": "next",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com",
+      "title": "Reddit for Developers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/http-fetch",
+      "title": "http-fetch",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/redis",
+      "title": "redis",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/launch/feature-guide",
+      "title": "feature-guide",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/client/navigation",
+      "title": "navigation",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/introduction/intro-games",
+      "title": "intro-games",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/blocks/overview",
+      "title": "overview",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/media-uploads",
+      "title": "media-uploads",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/best-practices/community_games",
+      "title": "community_games",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/tools/devvit_cli",
+      "title": "devvit_cli",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/guides/ai",
+      "title": "ai",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/introduction/intro-mod-tools",
+      "title": "intro-mod-tools",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/devvit-web/devvit_web_configuration",
+      "title": "devvit_web_configuration",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/devvit-web/devvit_web_overview",
+      "title": "devvit_web_overview",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/launch_screen_and_entry_points/splash_migration",
+      "title": "splash_migration",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next/examples/template-library",
+      "title": "template-library",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/client/menu-actions",
+      "title": "menu-actions",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next/examples/app-showcase",
+      "title": "app-showcase",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/apps/bot-bouncer",
+      "title": "Bot Bouncer | Reddit for Developers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/apps/community-home",
+      "title": "\ud83d\ude80 \u200b\u200b\u200b\u200b\u200bCommunity Home + Topic Posts | Reddit for Developers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_manage",
+      "title": "payments_manage",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_add",
+      "title": "payments_add",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/my/settings",
+      "title": "Reddit for Developers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/support_this_app",
+      "title": "support_this_app",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next/earn-money/payments/payments_overview",
+      "title": "payments_overview",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_migrate",
+      "title": "payments_migrate",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_publish",
+      "title": "payments_publish",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/earn-money/payments/payments_test",
+      "title": "payments_test",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/triggers",
+      "title": "triggers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/apps",
+      "title": "Apps | Reddit for Developers",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next/devvit_rules",
+      "title": "devvit_rules",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/0.11/devvit_rules",
+      "title": "devvit_rules",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/next/changelog",
+      "title": "changelog",
+      "type": "html"
+    },
+    {
+      "url": "https://developers.reddit.com/docs/capabilities/server/launch_screen_and_entry_points/launch_screen_customization",
+      "title": "launch_screen_customization",
+      "type": "html"
+    }
+  ],
+  "errors": [
+    "https://developers.reddit.com/docs/help: 404 Client Error: Not Found for url: https://developers.reddit.com/docs/help"
+  ]
+}

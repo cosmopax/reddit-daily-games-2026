@@ -1,0 +1,99 @@
+{
+  "source": "Reddit Daily Games Hackathon 2026",
+  "url": "https://redditdailygames2026.devpost.com",
+  "mode": "raw",
+  "scraped_at": "2026-02-04T02:08:01.845060",
+  "document_count": 17,
+  "error_count": 2,
+  "documents": [
+    {
+      "url": "https://redditdailygames2026.devpost.com",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/resources",
+      "title": "Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/project-gallery",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/updates",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/calendar/outlook",
+      "title": "Outlook",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/calendar/google",
+      "title": "Google Calendar - Sign in to Access &amp; Edit Your Schedule",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/calendar",
+      "title": "calendar",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/details/dates",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/register",
+      "title": "Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/forum_topics",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/participants",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/rules",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/updates/41628-action-required-updated-submission-form-for-reddit-daily-games-hackathon",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/users/login",
+      "title": "Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/forum_topics/42914-domain-exceptions-approval",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/forum_topics/new",
+      "title": "Devpost",
+      "type": "html"
+    },
+    {
+      "url": "https://redditdailygames2026.devpost.com/forum_topics/42947-sawnoar",
+      "title": "The Reddit Daily Games Hackathon: Join Reddit and GameMaker to build incredible daily games for the Reddit community! - Devpost",
+      "type": "html"
+    }
+  ],
+  "errors": [
+    "https://redditdailygames2026.devpost.com/signin/usernamerecovery: 404 Client Error: Not Found for url: https://redditdailygames2026.devpost.com/signin/usernamerecovery",
+    "https://redditdailygames2026.devpost.com/lifecycle/flows/signup: 404 Client Error: Not Found for url: https://redditdailygames2026.devpost.com/lifecycle/flows/signup"
+  ]
+}

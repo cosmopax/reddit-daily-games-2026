@@ -1,0 +1,16 @@
+{
+  "source": "Reddit Devvit GitHub",
+  "url": "https://github.com/reddit/devvit",
+  "mode": "raw",
+  "scraped_at": "2026-02-04T02:08:01.845004",
+  "document_count": 1,
+  "error_count": 0,
+  "documents": [
+    {
+      "url": "https://raw.githubusercontent.com/reddit/devvit/main/README.md",
+      "title": "devvit - README",
+      "type": "markdown"
+    }
+  ],
+  "errors": []
+}

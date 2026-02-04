@@ -1,0 +1,147 @@
+# reddit-api
+
+Source: https://developers.reddit.com/docs/capabilities/server/reddit-api
+
+On this page
+
+The Reddit API allows you to read and write Reddit content such as posts / comments / upvotes, in order to integrate your app's behavior with the content of the community it's installed in.
+
+## The Reddit client​
+
+Here's how to obtain a reference to the Reddit client
+
+  * Devvit Web
+  * Devvit Blocks / Mod Tools
+
+devvit.json
+    
+    
+    {  
+      "permissions": {  
+        "reddit": true  
+      }  
+    }  
+    
+
+server/index.ts
+    
+    
+    import { reddit } from '@devvit/reddit';  
+    
+
+devvit.tsx
+    
+    
+    import { Devvit } from '@devvit/public-api';  
+      
+    Devvit.configure({  
+      redditAPI: true,  
+    });  
+      
+    //Then, in any function that has a reference to Devvit.Context:  
+    const reddit = context.reddit;  
+    
+
+## Example usage​
+
+### Submitting a post​
+
+  * Devvit Web
+  * Devvit Blocks / Mod Tools
+
+    
+    
+    import { Devvit } from '@devvit/public-api';  
+    import { context, reddit } from '@devvit/web/server';  
+      
+    export const createPost = async () => {  
+    const { subredditName } = context;  
+    if (!subredditName) {  
+      throw new Error('subredditName is required');  
+    }  
+      
+    return await reddit.submitCustomPost({  
+      userGeneratedContent: {  
+        text: 'Hello there! This is a post from a Devvit app',  
+      },  
+      subredditName: subredditName,  
+      title: 'New Post',  
+      entry: 'default',  
+    });  
+    };  
+    
+    
+    
+    import { Devvit } from '@devvit/public-api';  
+      
+    Devvit.configure({  
+      redditAPI: true,  
+    });  
+      
+    function createPost(context: Devvit.Context) {  
+      const currentSubreddit = context.reddit.getCurrentSubreddit();  
+      if (!currentSubreddit) {  
+        throw new Error('No subreddit found');  
+      }  
+      
+      return context.reddit.submitPost({  
+        title: 'My custom post',  
+        subredditName: currentSubreddit.name,  
+        preview: (  
+          <vstack height="100%" width="100%" alignment="middle center">  
+            <text size="large">Loading...</text>  
+          </vstack>  
+        ),  
+      });  
+    }  
+    
+
+### Submitting a comment​
+
+note
+
+Auto-comments should be used to spark conversation in the post comments, but you should avoid lower-signal updates (e.g., level/progress pings).
+
+  * Devvit Web
+  * Devvit Blocks / Mod Tools
+
+    
+    
+        import { context, reddit } from '@devvit/web/server';  
+      
+        export const createComment = async () => {  
+            const { subredditName } = context;  
+            if (!subredditName) {  
+                throw new Error('subredditName is required');  
+            }  
+      
+            reddit.submitComment({  
+                postId: 't3_123456', // Replace with the actual post ID  
+                text: 'This is a comment from a Devvit app',  
+                runAs: 'USER' // Optional: specify the user to run as  
+            });  
+        };  
+    
+    
+    
+        import { Devvit } from '@devvit/public-api';  
+      
+        Devvit.configure({  
+            redditAPI: true,  
+        });  
+      
+        function createComment(context: Devvit.Context) {  
+            const { reddit } = context;  
+      
+            reddit.submitComment({  
+                postId: 't3_123456', // Replace with the actual post ID  
+                text: 'This is a comment from a Devvit app',  
+                runAs: RunAs.USER, // Optional: specify the user to run as  
+            });  
+        };  
+    
+
+  * The Reddit client
+  * Example usage
+    * Submitting a post
+    * Submitting a comment

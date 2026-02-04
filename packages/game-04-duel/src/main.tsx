@@ -14,14 +14,14 @@ Devvit.addSettings([
         name: 'HUGGINGFACE_TOKEN',
         label: 'Hugging Face API Token',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
 ]);

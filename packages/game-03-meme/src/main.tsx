@@ -20,7 +20,7 @@ Devvit.addSettings([
         name: 'HUGGINGFACE_TOKEN',
         label: 'Hugging Face API Token',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
 ]);

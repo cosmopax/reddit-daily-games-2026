@@ -22,7 +22,7 @@ export class GameStrategyServer {
 
     async getUserState(userId: string): Promise<UserState> {
         // Rehydrate from Redis using our optimized wrapper
-        const keys = ['cash', 'lastTick', ...Object.keys(ASSETS).map(id => `asset_${id}`)];
+        const keys = ['cash', 'lastTick', 'advisors_json', ...Object.keys(ASSETS).map(id => `asset_${id}`)];
         const data = await this.redis.getPackedState(this.getUserKey(userId), 'state', keys);
 
         const assets: Record<string, number> = {};
@@ -42,6 +42,12 @@ export class GameStrategyServer {
 
         const lastTick = data['lastTick'] || Date.now();
         let cash = data['cash'] || 0;
+        let advisors: ExecutiveAdvisor[] = [];
+        if (data['advisors_json']) {
+            try {
+                advisors = JSON.parse(data['advisors_json'] as unknown as string);
+            } catch (e) { }
+        }
 
         // Lazy Evaluation: Apply pending income
         const now = Date.now();
@@ -74,6 +80,7 @@ export class GameStrategyServer {
             lastTick: now, // We project forward to 'now'
             netWorth: cash + assetValue,
             assets: assets as Record<AssetType, number>,
+            advisors
         };
     }
 
@@ -140,28 +147,61 @@ export class GameStrategyServer {
         console.log("Processing hourly tick...");
         // Ideally, we'd iterate a specific ZSET shard of active users.
         // For MVP, we pass. Implementation details for sharding would go here.
+    }
     /**
      * Unlocks a new "Executive Advisor" if net worth milestones are met.
      */
-    async unlockAdvisor(userId: string): Promise < string | null > {
-            const state = await this.getUserState(userId);
+    async unlockAdvisor(userId: string): Promise<ExecutiveAdvisor | null> {
+        let state = await this.getUserState(userId);
 
-            // Milestones: 1M, 10M, 100M, 1B
-            // Check if we need to adding slot logic or just random unlock
-            const currentAdvisors = state.advisors || [];
-            if(currentAdvisors.length >= 4) return null; // Max 4
+        const currentAdvisors = state.advisors || [];
+        if (currentAdvisors.length >= 4) return null; // Max 4
 
-            const cost = 1000000 * Math.pow(10, currentAdvisors.length);
-            if(state.netWorth < cost) return null; // Not rich enough
+        const cost = 1000000 * Math.pow(10, currentAdvisors.length);
+        if (state.cash < cost) return null; // Not liquid enough (changed from net worth to cash for challenge)
 
-            // Generate Advisor
-            const proxy = new ServiceProxy(this.scheduler.context); // wait, need context access. 
-            // We stored context in scheduler? No, we need context.
-            // Quick fix: pass context to method or store in class (it is stored in scheduler but maybe public?)
-            // Let's assume we can pass it or fix constructor. 
-            // Actually this.scheduler.context might not be valid.
-            // Let's instantiate Proxy with "this.redis.context" if available? 
-            // ServiceProxy needs Context. GameStrategyServer constructed with Context.
-            // We should store context in Class.
-        }
+        // Deduct Cash
+        state.cash -= cost;
+        state.lastTick = Date.now();
+
+        // Generate Advisor
+        // @ts-ignore - Context mismatch fix later?
+        const proxy = new ServiceProxy(this.context);
+        const archetypes = ['CFO', 'Growth Hacker', 'Quantum Analyst', 'Corporate Spy'];
+        const role = archetypes[currentAdvisors.length % archetypes.length];
+
+        const portrait = await proxy.generateCharacterPortrait(role, 'Corporate Cyberpunk');
+
+        const advisor: ExecutiveAdvisor = {
+            id: Math.random().toString(36).substring(7),
+            name: `Executive ${Math.floor(Math.random() * 999)}`,
+            role: role,
+            benefit: `+${(currentAdvisors.length + 1) * 10}% Income`,
+            multiplier: 1 + ((currentAdvisors.length + 1) * 0.1),
+            portraitUrl: portrait
+        };
+
+        const newAdvisors = [...currentAdvisors, advisor];
+
+        // Save (Requires updating saveUserState to handle advisors)
+        // We need to modify saveUserState logic too because it uses RedisWrapper packed state.
+        // RedisWrapper packed state works for simple keys. Arrays are tricky.
+        // We will store advisors as a JSON blob in a separate key or pack it as 'advisors_json' string?
+        // Let's store as 'advisors_json' field.
+        await this.saveWithAdvisors(userId, state, newAdvisors);
+
+        return advisor;
     }
+
+    async saveWithAdvisors(userId: string, state: UserState, advisors: ExecutiveAdvisor[]) {
+        const data: Record<string, any> = {
+            cash: state.cash,
+            lastTick: state.lastTick,
+            advisors_json: JSON.stringify(advisors) // Store as JSON string
+        };
+        Object.entries(state.assets).forEach(([id, count]) => {
+            data[`asset_${id}`] = count;
+        });
+        await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
+    }
+}

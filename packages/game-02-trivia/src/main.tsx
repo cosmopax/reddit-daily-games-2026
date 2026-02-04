@@ -20,14 +20,14 @@ Devvit.addSettings([
         name: 'SERPAPI_KEY',
         label: 'SerpApi Key (Google Trends)',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
 ]);

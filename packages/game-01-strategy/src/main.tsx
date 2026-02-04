@@ -15,7 +15,7 @@ Devvit.addSettings([
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: true,
+        isSecret: false,
         scope: SettingScope.Installation,
     },
 ]);

@@ -1,4 +1,4 @@
-import { Devvit, useState } from '@devvit/public-api';
+import { Devvit, useState, SettingScope } from '@devvit/public-api';
 import { Theme } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
@@ -21,7 +21,7 @@ Devvit.addSettings([
         label: 'Hugging Face API Token',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
 ]);
 

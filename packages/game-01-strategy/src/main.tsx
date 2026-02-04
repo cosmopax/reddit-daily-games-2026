@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync } from '@devvit/public-api';
+import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import { AssetType, AssetConfig, ASSETS, UserState } from './server';
 import { Theme } from 'shared';
 import { ASSETS, AssetType, UserState } from './types';
@@ -16,7 +16,7 @@ Devvit.addSettings([
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
 ]);
 

@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync } from '@devvit/public-api';
+import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import { DuelServer, DuelState } from './DuelServer';
 import { Theme } from 'shared';
 
@@ -15,14 +15,14 @@ Devvit.addSettings([
         label: 'Hugging Face API Token',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
 ]);
 

@@ -1,4 +1,4 @@
-import { Devvit } from '@devvit/public-api';
+import { Devvit, SettingScope } from '@devvit/public-api';
 import { Theme } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
@@ -21,14 +21,14 @@ Devvit.addSettings([
         label: 'SerpApi Key (Google Trends)',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
         isSecret: true,
-        scope: 'app',
+        scope: SettingScope.App,
     },
 ]);
 

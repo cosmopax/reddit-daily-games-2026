@@ -14,6 +14,24 @@ Devvit.configure({
     }
 });
 
+// App settings for API keys
+Devvit.addSettings([
+    {
+        name: 'SERPAPI_KEY',
+        label: 'SerpApi Key (Google Trends)',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+    {
+        name: 'GEMINI_API_KEY',
+        label: 'Google Gemini API Key',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+]);
+
 Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
     render: (context) => (

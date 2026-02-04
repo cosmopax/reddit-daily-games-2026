@@ -8,6 +8,24 @@ Devvit.configure({
     redis: true,
 });
 
+// App settings for API keys
+Devvit.addSettings([
+    {
+        name: 'HUGGINGFACE_TOKEN',
+        label: 'Hugging Face API Token',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+    {
+        name: 'GEMINI_API_KEY',
+        label: 'Google Gemini API Key',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+]);
+
 Devvit.addCustomPostType({
     name: 'AI Duel',
     render: (context) => {

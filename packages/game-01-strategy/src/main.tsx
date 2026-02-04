@@ -9,6 +9,17 @@ Devvit.configure({
     redis: true,
 });
 
+// App settings for API keys
+Devvit.addSettings([
+    {
+        name: 'GEMINI_API_KEY',
+        label: 'Google Gemini API Key',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+]);
+
 Devvit.addSchedulerJob({
     name: 'hourly_tick',
     onRun: async (event, context) => {

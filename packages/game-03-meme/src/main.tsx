@@ -14,6 +14,17 @@ Devvit.configure({
     }
 });
 
+// App settings for API keys
+Devvit.addSettings([
+    {
+        name: 'HUGGINGFACE_TOKEN',
+        label: 'Hugging Face API Token',
+        type: 'string',
+        isSecret: true,
+        scope: 'app',
+    },
+]);
+
 Devvit.addCustomPostType({
     name: 'Meme Wars',
     render: (context) => {

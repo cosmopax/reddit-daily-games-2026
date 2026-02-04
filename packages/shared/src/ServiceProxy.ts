@@ -55,7 +55,7 @@ export class ServiceProxy {
                 throw new Error(`SerpApi HTTP ${response.status}: ${errText}`);
             }
 
-            const data = await response.json();
+            const data: any = await response.json();
             // Parse SerpApi response for the first trending query
             // Structure: daily_searches is likely gone/changed. trending_now usually returns 'trending_searches'
             if (data.trending_searches?.[0]?.query) {
@@ -97,7 +97,7 @@ export class ServiceProxy {
                     const errText = await response.text();
                     throw new Error(`Replicate HTTP ${response.status}: ${errText}`);
                 } else {
-                    const data = await response.json();
+                    const data: any = await response.json();
                     if (data.status === 'succeeded' && data.output?.[0]) return data.output[0];
                     return data.urls?.get || '';
                 }
@@ -182,7 +182,7 @@ Make the move thematic and cool.
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
+                    const data: any = await response.json();
                     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (text) {
                         const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();

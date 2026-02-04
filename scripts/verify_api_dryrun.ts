@@ -1,5 +1,5 @@
 
-import { ServiceProxy } from '../packages/shared/src/index';
+import { ServiceProxy } from '../packages/shared/src/ServiceProxy.ts';
 
 // Mock Devvit Context
 const mockContext: any = {

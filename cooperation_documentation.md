@@ -153,12 +153,13 @@
 - **Outcome:**
   - Added `docs/NEXT_CODEX_HANDOVER_2026-02-05.md` as the new authoritative deadline-track handover.
   - Added `CODEX_HANDOVER_4.md` as a root entrypoint pointing to the new handover + demo playbook.
-- **Commands:** (to be filled when committed/pushed)
-  - pending
+- **Commands:**
+  - `git add -A`
+  - `git commit -m "docs: add 2026-02-05 handover and entrypoint"`
 - **Tests:** (docs only)
   - `sed`/`rg` inspection ✅
 - **Commit/Worktree:**
-  - `commit`: pending
+  - `commit`: `1e25d8b`
   - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
 
 ### [2026-02-04 09:23] - Handover Docs Commit + Push (Agent: Codex GPT-5)

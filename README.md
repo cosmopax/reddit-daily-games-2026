@@ -34,6 +34,7 @@ This creates (or opens) a playable daily post in the feed. Pin those posts in a 
 See:
 - `docs/NEXT_CODEX_HANDOVER_2026-02-04.md`
 - `docs/DEVVIT_OPERATIONS_RUNBOOK.md`
+- `docs/DEMO_SUBREDDIT_PLAYBOOK.md`
 
 Run Devvit commands from the package directory, e.g.:
 

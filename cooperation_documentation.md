@@ -115,6 +115,27 @@
   - `commit`: `fe7996c`
   - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
 
+### [2026-02-05 03:05] - Deadline Polish: Telemetry, iOS Image Fallback, Demo Playbook (Agent: Codex GPT-5)
+- **Intent:** Move toward judge-ready demo stability for the Feb 13 deadline by adding action evidence (telemetry logs), a runtime-safe image fallback for flaky clients, and a demo setup playbook + checklist script.
+- **Outcome:**
+  - Added shared content pack scaffolding under `packages/shared/src/content/` and wired `Episode.ts` to use it.
+  - Added `NEON_IMAGE_MODE` setting to all 4 apps and updated `EpisodeHeader` to optionally hide images (set to `none` if `data:` images fail on iOS).
+  - Added telemetry logs for key actions:
+    - Strategy: contract accept + buy
+    - Trivia: guess + reason
+    - Meme: caption submit + votes + AI queue
+    - Duel: user move + AI move source (gemini vs fallback)
+  - Meme Wars: added one-vote-per-user guard (caption + AI) and a "Newest Captions" section (timestamp ZSET backed).
+  - Duel: adjusted quick moves to a vertical layout (no wrap) and added a share string in footer.
+  - Added `docs/DEMO_SUBREDDIT_PLAYBOOK.md` and `scripts/print_demo_checklist.sh` for rapid judge demo setup.
+- **Commands:**
+  - `npx devvit upload` (from each package directory: game-01..04)
+- **Tests:**
+  - `npx devvit upload` succeeded for all 4 apps (build + upload) ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
+
 ### [2026-02-04 09:23] - Handover Docs Commit + Push (Agent: Codex GPT-5)
 - **Intent:** Finalize documentation handover task with committed and pushed branch state.
 - **Outcome:** Committed docs/handover updates and pushed branch `codex/handover-ops-20260204` to GitHub.

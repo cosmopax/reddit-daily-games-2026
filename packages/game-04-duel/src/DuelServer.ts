@@ -63,6 +63,7 @@ export class DuelServer {
 
         // 1. Process User Move
         state.history.push(`You used: ${move}`);
+        console.log(`[duel] user_move user=${userId} move=${move}`);
 
         // Simulate Damage (Mock) - In real version, LLM judge determines effectiveness
         const dmg = Math.floor(Math.random() * 20);
@@ -100,9 +101,12 @@ export class DuelServer {
         // Fetch AI Move via Proxy (Gemini) with deterministic fallback (never show "Static Noise")
         const proxy = new ServiceProxy(this.context);
         let ai = await proxy.generateAiMove(state.history);
+        let source: 'gemini' | 'fallback' = 'gemini';
         if (!ai.move || ai.move === 'Static Noise' || ai.move.startsWith('Systems Offline') || ai.damage <= 0) {
             ai = fallbackAiMove(state.history, episode.id);
+            source = 'fallback';
         }
+        console.log(`[duel] ai_move user=${userId} ep=${episode.id} source=${source} dmg=${ai.damage}`);
 
         state.history.push(`AI used: ${ai.move}`);
         state.userHealth = Math.max(0, state.userHealth - ai.damage);

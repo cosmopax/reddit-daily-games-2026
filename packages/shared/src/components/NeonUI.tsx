@@ -78,12 +78,14 @@ export const EpisodeHeader = (props: {
   episode: Episode;
   title: string;
   subtitle: string;
+  showImage?: boolean;
   rightActionLabel?: string;
   onRightAction?: () => void;
 }): JSX.Element => {
   const { episode } = props;
   const palette = getNeonPalette(episode.paletteId);
   const portraitUrl = episode.portraitUrl || episodePortraitUrl(episode, 'ORACLE NYX');
+  const showImage = props.showImage !== false;
 
   return (
     <vstack
@@ -107,7 +109,7 @@ export const EpisodeHeader = (props: {
           </text>
         </vstack>
         <vstack alignment="center middle">
-          <image url={portraitUrl} imageHeight={72} imageWidth={120} resizeMode="cover" />
+          {showImage ? <image url={portraitUrl} imageHeight={72} imageWidth={120} resizeMode="cover" /> : null}
           {props.rightActionLabel && props.onRightAction ? (
             <button appearance="secondary" size="small" onPress={props.onRightAction}>
               {props.rightActionLabel}

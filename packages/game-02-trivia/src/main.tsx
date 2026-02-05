@@ -51,6 +51,14 @@ Devvit.addSettings([
         type: 'string',
         isSecret: false,
     },
+    {
+        name: 'NEON_IMAGE_MODE',
+        label: 'Neon images (data-URI) mode',
+        type: 'string',
+        isSecret: false,
+        helpText: 'Set to "none" if images fail to render on some clients (e.g. iOS).',
+        defaultValue: 'data',
+    },
 ]);
 
 Devvit.addMenuItem({
@@ -97,6 +105,9 @@ Devvit.addCustomPostType({
 
         const { data, loading, refresh } = useAsync(async () => {
             const episode = await getTodayEpisode(context);
+            // @ts-ignore runtime setting
+            const imgMode = (await context.settings?.get('NEON_IMAGE_MODE')) as string | undefined;
+            const showImage = (imgMode || 'data') !== 'none';
             const playRaw = await context.redis.get(playKey(episode.id));
             const play: PlayRecord | null = playRaw ? JSON.parse(playRaw) : null;
 
@@ -119,7 +130,7 @@ Devvit.addCustomPostType({
                 };
             }
 
-            return { episode, play, counts, stats, archive, archiveCounts };
+            return { episode, play, counts, stats, archive, archiveCounts, showImage };
         });
 
         const onGuess = async (choice: 'higher' | 'lower') => {
@@ -141,6 +152,7 @@ Devvit.addCustomPostType({
 
             await context.redis.set(playKey(episode.id), JSON.stringify(record));
             await context.redis.hIncrBy(countsKey(episode.id), choice, 1);
+            console.log(`[trivia] guess user=${userId} ep=${episode.id} choice=${choice} correct=${win}`);
 
             // Streak handling (UTC episodes)
             const stats: UserStats = data.stats || { streak: 0, maxStreak: 0, totalWins: 0 };
@@ -172,12 +184,14 @@ Devvit.addCustomPostType({
             if (!data?.episode || !data.play) return;
             const updated = { ...data.play, reason };
             await context.redis.set(playKey(data.episode.id), JSON.stringify(updated));
+            console.log(`[trivia] reason user=${userId} ep=${data.episode.id} reason=${reason}`);
             await refresh();
         };
 
         if (loading || !data) return <vstack alignment="center middle"><text>Loading Heist...</text></vstack>;
 
         const { episode, play, stats, archive, archiveCounts } = data;
+        const showImage = (data as any).showImage as boolean | undefined;
         const a = episode.signals?.[0];
         const b = episode.signals?.[1];
         const played = !!play;
@@ -225,6 +239,7 @@ Devvit.addCustomPostType({
                     episode={episode}
                     title="HIVE MIND: TREND HEIST"
                     subtitle={`One pick. One reason. Streak: ${stats?.streak || 0}`}
+                    showImage={showImage}
                     rightActionLabel="🏆 Rank"
                     onRightAction={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />

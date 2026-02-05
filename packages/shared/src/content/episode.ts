@@ -1,0 +1,45 @@
+import type { TrendResult } from '../ServiceProxy';
+
+export const EP_TITLES = [
+  'Neon Daily Brief',
+  'Midnight Market Pulse',
+  'Arcology Whisper Network',
+  'Signal Spike: District-9',
+  'Protocol Drift: Feedline',
+  'Syndicate Weather Report',
+  'Glitch Season: Episode',
+];
+
+export const CURATED_SIGNALS: TrendResult[] = [
+  { query: 'Neon Ramen Recall', traffic: 120000, trafficDisplay: '120K+' },
+  { query: 'Drone Derby Finals', traffic: 98000, trafficDisplay: '98K+' },
+  { query: 'Valkyrie Firmware Leak', traffic: 210000, trafficDisplay: '210K+' },
+  { query: 'Subway Synthwave Party', traffic: 56000, trafficDisplay: '56K+' },
+  { query: 'Quantum Coupon Glitch', traffic: 175000, trafficDisplay: '175K+' },
+  { query: 'Chrome Market Crash', traffic: 240000, trafficDisplay: '240K+' },
+  { query: 'AI Idol Scandal', traffic: 89000, trafficDisplay: '89K+' },
+  { query: 'Arcade Token Shortage', traffic: 64000, trafficDisplay: '64K+' },
+  { query: 'Snoo Neural Upgrade', traffic: 132000, trafficDisplay: '132K+' },
+  { query: 'Cyber-District Curfew', traffic: 74000, trafficDisplay: '74K+' },
+  { query: 'Holo-Poster Heist', traffic: 51000, trafficDisplay: '51K+' },
+  { query: 'Neon Cat Parade', traffic: 68000, trafficDisplay: '68K+' },
+  { query: 'Synthcoin Pump', traffic: 155000, trafficDisplay: '155K+' },
+  { query: 'Off-Grid Coffee Ban', traffic: 47000, trafficDisplay: '47K+' },
+  { query: 'Glitch Graffiti Map', traffic: 36000, trafficDisplay: '36K+' },
+  { query: 'Kernel Update 2.7', traffic: 92000, trafficDisplay: '92K+' },
+  { query: 'Basement Arena Stream', traffic: 81000, trafficDisplay: '81K+' },
+  { query: 'Shadow Mod Uprising', traffic: 66000, trafficDisplay: '66K+' },
+  { query: 'Laser-Lute Concert', traffic: 42000, trafficDisplay: '42K+' },
+  { query: 'Metroline Blackout', traffic: 118000, trafficDisplay: '118K+' },
+  { query: 'Bio-Signature Spoof', traffic: 53000, trafficDisplay: '53K+' },
+  { query: 'Duel Protocol Patch', traffic: 99000, trafficDisplay: '99K+' },
+  { query: 'Caption War Trending', traffic: 76000, trafficDisplay: '76K+' },
+  { query: 'Night Market Auction', traffic: 88000, trafficDisplay: '88K+' },
+  { query: 'Encrypted Love Letters', traffic: 61000, trafficDisplay: '61K+' },
+  { query: 'Neon Snow Forecast', traffic: 57000, trafficDisplay: '57K+' },
+  { query: 'Street Baron Arrest', traffic: 143000, trafficDisplay: '143K+' },
+  { query: 'Rival CEO Vex', traffic: 69000, trafficDisplay: '69K+' },
+  { query: 'Oracle Nyx Prophecy', traffic: 84000, trafficDisplay: '84K+' },
+  { query: 'Arcology Elevator Jam', traffic: 39000, trafficDisplay: '39K+' },
+];
+

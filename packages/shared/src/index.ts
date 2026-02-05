@@ -5,5 +5,6 @@ export * from './Episode';
 export * from './NeonArt';
 export * from './Theme';
 export * from './Leaderboard';
+export * from './content';
 export * from './components/LeaderboardUI';
 export * from './components/NeonUI';

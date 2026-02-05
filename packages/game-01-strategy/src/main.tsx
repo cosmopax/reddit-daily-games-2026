@@ -21,6 +21,14 @@ Devvit.addSettings([
         type: 'string',
         isSecret: false,
     },
+    {
+        name: 'NEON_IMAGE_MODE',
+        label: 'Neon images (data-URI) mode',
+        type: 'string',
+        isSecret: false,
+        helpText: 'Set to "none" if images fail to render on some clients (e.g. iOS).',
+        defaultValue: 'data',
+    },
 ]);
 
 Devvit.addMenuItem({
@@ -76,12 +84,16 @@ Devvit.addCustomPostType({
         // Load initial state
         const { data, loading, refresh } = useAsync(async () => {
             const episode = await getTodayEpisode(context);
+            // @ts-ignore runtime setting
+            const imgMode = (await context.settings?.get('NEON_IMAGE_MODE')) as string | undefined;
+            const showImage = (imgMode || 'data') !== 'none';
             const view = await server.getUserView(userId);
-            return { episode, view };
+            return { episode, view, showImage };
         });
 
         const episode = data?.episode;
         const view = data?.view;
+        const showImage = data?.showImage;
 
         const onBuy = async (assetId: AssetType) => {
             const success = await server.buyAsset(userId, assetId);
@@ -134,6 +146,7 @@ Devvit.addCustomPostType({
                     episode={episode}
                     title="NEON SYNDICATE TYCOON"
                     subtitle={`Tier: ${view.tier} · Mult: x${view.incomeMultiplier.toFixed(2)} · Tick: ${new Date(view.lastTick).toLocaleTimeString()}`}
+                    showImage={showImage}
                     rightActionLabel="🏆 Authors"
                     onRightAction={async () => {
                         setShowLeaderboard(true);
@@ -157,6 +170,12 @@ Devvit.addCustomPostType({
                     <text color={Theme.colors.textDim} size="small">
                         Mission: {nextTarget ? `Reach $${nextTarget[1].cost.toLocaleString()} and buy ${nextTarget[1].name}` : 'All assets unlocked. Push leaderboard dominance.'}
                     </text>
+                    <vstack backgroundColor={Theme.colors.background} padding="small" cornerRadius="small" border="thin" borderColor={Theme.colors.surfaceHighlight}>
+                        <text size="small" color={Theme.colors.textDim}>Share</text>
+                        <text size="small" style="mono" color={Theme.colors.primary} wrap>
+                            {`SYNDICATE ${episode.id} | tier:${view.tier} | net:$${view.netWorth.toLocaleString()} | #NeonTycoon`}
+                        </text>
+                    </vstack>
                 </vstack>
 
                 <spacer size="medium" />

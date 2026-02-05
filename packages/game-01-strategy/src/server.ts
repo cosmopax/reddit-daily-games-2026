@@ -313,6 +313,7 @@ export class GameStrategyServer {
         state.lastTick = Date.now();
         await this.context.redis.set(this.key(userId), JSON.stringify(state));
 
+        console.log(`[strategy] contract_accept user=${userId} ep=${episode.id} choice=${choiceId} reward=${chosen.reward} mult=${chosen.multiplier}`);
         await this.syncLeaderboard(userId, Math.round(state.cash + computeAssetValue(state.assets)));
         return true;
     }
@@ -331,6 +332,7 @@ export class GameStrategyServer {
         s.lastTick = Date.now();
         await this.context.redis.set(this.key(userId), JSON.stringify(s));
 
+        console.log(`[strategy] buy user=${userId} asset=${assetType} amount=${amount} cost=${totalCost} cash=${Math.round(s.cash)}`);
         await this.syncLeaderboard(userId, Math.round(s.cash + computeAssetValue(s.assets)));
         return true;
     }
@@ -354,4 +356,3 @@ export class GameStrategyServer {
         return lb.getTop(10);
     }
 }
-

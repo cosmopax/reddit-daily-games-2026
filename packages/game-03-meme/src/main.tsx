@@ -24,6 +24,14 @@ Devvit.addSettings([
         type: 'string',
         isSecret: false,
     },
+    {
+        name: 'NEON_IMAGE_MODE',
+        label: 'Neon images (data-URI) mode',
+        type: 'string',
+        isSecret: false,
+        helpText: 'Set to "none" if images fail to render on some clients (e.g. iOS).',
+        defaultValue: 'data',
+    },
 ]);
 
 Devvit.addMenuItem({
@@ -72,14 +80,23 @@ Devvit.addCustomPostType({
         const capLb = (episodeId: string) => `memeforge:v1:${episodeId}:lb`;
         const capTime = (episodeId: string) => `memeforge:v1:${episodeId}:time`;
 
-        const { data, loading, refresh } = useAsync(async () => {
-            const episode = await getTodayEpisode(context);
+	        const { data, loading, refresh } = useAsync(async () => {
+	            const episode = await getTodayEpisode(context);
+	            // @ts-ignore runtime setting
+	            const imgMode = (await context.settings?.get('NEON_IMAGE_MODE')) as string | undefined;
+	            const showImage = (imgMode || 'data') !== 'none';
 
-            const captionIds = await context.redis.zRange(capLb(episode.id), 0, 9, { by: 'rank', reverse: true });
-            const captionPostsRaw = captionIds?.length
-                ? await context.redis.hMGet(capHash(episode.id), captionIds.map((id) => id.member))
-                : [];
-            const captions = (captionPostsRaw || []).filter(Boolean).map((p) => JSON.parse(p!));
+	            const captionIds = await context.redis.zRange(capLb(episode.id), 0, 9, { by: 'rank', reverse: true });
+	            const captionPostsRaw = captionIds?.length
+	                ? await context.redis.hMGet(capHash(episode.id), captionIds.map((id) => id.member))
+	                : [];
+	            const captions = (captionPostsRaw || []).filter(Boolean).map((p) => JSON.parse(p!));
+
+	            const newestIds = await context.redis.zRange(capTime(episode.id), 0, 2, { by: 'rank', reverse: true });
+	            const newestRaw = newestIds?.length
+	                ? await context.redis.hMGet(capHash(episode.id), newestIds.map((id) => id.member))
+	                : [];
+	            const newestCaptions = (newestRaw || []).filter(Boolean).map((p) => JSON.parse(p!));
 
             const aiIds = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
             const aiPostsRaw = aiIds?.length ? await context.redis.hMGet('meme:data', aiIds.map((id) => id.member)) : [];
@@ -92,25 +109,40 @@ Devvit.addCustomPostType({
                 hasHf = typeof hf === 'string' && hf.trim().length > 0;
             } catch { }
 
-            return { episode, captions, aiPosts, hasHf };
-        });
+	            return { episode, captions, newestCaptions, aiPosts, hasHf, showImage };
+	        });
 
         const onVote = async (memeId: string, delta: number) => {
             if (!data?.episode) return;
             const episodeId = data.episode.id;
+            const voter = context.userId || 'anon';
 
             // Caption battle vote first
             const existing = await context.redis.hGet(capHash(episodeId), memeId);
             if (existing) {
+                const voteKey = `memeforge:v1:${episodeId}:vote:${memeId}:${voter}`;
+                const already = await context.redis.get(voteKey);
+                if (already) {
+                    context.ui.showToast('Already voted today.');
+                    return;
+                }
                 await context.redis.zIncrBy(capLb(episodeId), memeId, delta);
                 const parsed = JSON.parse(existing);
                 parsed.votes = (parsed.votes || 0) + delta;
                 await context.redis.hSet(capHash(episodeId), { [memeId]: JSON.stringify(parsed) });
+                await context.redis.set(voteKey, String(delta));
+                console.log(`[memeforge] vote_caption user=${voter} ep=${episodeId} caption=${memeId} delta=${delta}`);
                 await refresh();
                 return;
             }
 
             // AI meme vote (legacy)
+            const aiVoteKey = `meme:v1:vote:${memeId}:${voter}`;
+            const aiAlready = await context.redis.get(aiVoteKey);
+            if (aiAlready) {
+                context.ui.showToast('Already voted.');
+                return;
+            }
             await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
             const raw = await context.redis.hGet('meme:data', memeId);
             if (raw) {
@@ -130,6 +162,8 @@ Devvit.addCustomPostType({
                     await lb.submitScore(authorId, username, newScore);
                 }
             }
+            await context.redis.set(aiVoteKey, String(delta));
+            console.log(`[memeforge] vote_ai user=${voter} meme=${memeId} delta=${delta}`);
             await refresh();
         };
 
@@ -151,6 +185,7 @@ Devvit.addCustomPostType({
             await context.redis.zAdd(capTime(episodeId), { member: id, score: post.timestamp });
             setCaption('');
             context.ui.showToast('Caption submitted.');
+            console.log(`[memeforge] submit_caption user=${post.userId} ep=${episodeId} caption=${id}`);
             await refresh();
         };
 
@@ -160,6 +195,7 @@ Devvit.addCustomPostType({
             const jobId = await queue.enqueueJob(context.userId || 'anon', prompt);
             setStatus(`Queued. ID: ${jobId} (refresh in a few seconds)`);
             setPrompt('');
+            console.log(`[memeforge] queue_ai user=${context.userId || 'anon'} job=${jobId}`);
         };
 
         const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -195,6 +231,7 @@ Devvit.addCustomPostType({
         }
 
         const sceneUrl = episodeSceneUrl(data.episode, 'NEON FORGE');
+        const showImage = (data as any).showImage as boolean | undefined;
 
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
@@ -202,6 +239,7 @@ Devvit.addCustomPostType({
                     episode={data.episode}
                     title="MEME WARS: NEON FORGE"
                     subtitle="Keyless caption battles. Keys enhance image generation."
+                    showImage={showImage}
                     rightActionLabel="🏆 Top Artists"
                     onRightAction={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />
@@ -210,7 +248,7 @@ Devvit.addCustomPostType({
 
                 <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight} gap="small">
                     <text color={Theme.colors.text} weight="bold">Caption Battle (always works)</text>
-                    <image url={sceneUrl} imageHeight={160} imageWidth={280} resizeMode="cover" />
+                    {showImage ? <image url={sceneUrl} imageHeight={160} imageWidth={280} resizeMode="cover" /> : null}
                     <textfield placeholder='Drop a caption (short, punchy)...' onChange={(v) => setCaption(v)} />
                     <button onPress={onSubmitCaption} appearance="primary" disabled={!caption.trim()}>
                         Submit Caption
@@ -246,6 +284,21 @@ Devvit.addCustomPostType({
                     )}
                 </vstack>
 
+                <spacer size="small" />
+
+                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight} gap="small">
+                    <text color={Theme.colors.text} weight="bold">Newest Captions</text>
+                    {(data.newestCaptions && data.newestCaptions.length > 0) ? (
+                        data.newestCaptions.slice(0, 3).map((p: any) => (
+                            <vstack key={`new_${p.id}`} backgroundColor={Theme.colors.background} padding="small" cornerRadius="small" border="thin" borderColor={Theme.colors.surfaceHighlight} gap="small">
+                                <text size="small" color={Theme.colors.text} wrap>{p.caption}</text>
+                            </vstack>
+                        ))
+                    ) : (
+                        <text size="small" color={Theme.colors.textDim}>Submit one to start the feed.</text>
+                    )}
+                </vstack>
+
                 <spacer size="medium" />
 
                 <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight} gap="small">
@@ -264,7 +317,7 @@ Devvit.addCustomPostType({
                         <vstack gap="small">
                             {data.aiPosts.slice(0, 2).map((meme: any) => (
                                 <vstack key={meme.id} backgroundColor={Theme.colors.background} padding="small" cornerRadius="small" border="thin" borderColor={Theme.colors.surfaceHighlight} alignment="center middle" gap="small">
-                                    <image url={meme.url} imageHeight={160} imageWidth={160} resizeMode="cover" />
+                                    {showImage ? <image url={meme.url} imageHeight={160} imageWidth={160} resizeMode="cover" /> : null}
                                     <text size="small" color={Theme.colors.textDim} wrap>{meme.prompt}</text>
                                     <hstack alignment="center middle" gap="medium">
                                         <button appearance="plain" size="small" onPress={() => onVote(meme.id, 1)}>⬆️</button>

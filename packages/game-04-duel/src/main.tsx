@@ -24,6 +24,14 @@ Devvit.addSettings([
         type: 'string',
         isSecret: false,
     },
+    {
+        name: 'NEON_IMAGE_MODE',
+        label: 'Neon images (data-URI) mode',
+        type: 'string',
+        isSecret: false,
+        helpText: 'Set to "none" if images fail to render on some clients (e.g. iOS).',
+        defaultValue: 'data',
+    },
 ]);
 
 Devvit.addMenuItem({
@@ -67,14 +75,18 @@ Devvit.addCustomPostType({
         const [userId] = useState(() => context.userId || 'test-user');
         const [move, setMove] = useState('');
 
-        const { data, loading, refresh } = useAsync<{ episode: any; state: DuelState }>(async () => {
+        const { data, loading, refresh } = useAsync<{ episode: any; state: DuelState; showImage: boolean }>(async () => {
             const episode = await getTodayEpisode(context);
+            // @ts-ignore runtime setting
+            const imgMode = (await context.settings?.get('NEON_IMAGE_MODE')) as string | undefined;
+            const showImage = (imgMode || 'data') !== 'none';
             const state = await server.getDuelState(userId);
-            return { episode, state };
+            return { episode, state, showImage };
         });
 
         const episode = data?.episode;
         const state = data?.state;
+        const showImage = data?.showImage;
 
         const onAttack = async () => {
             if (!move || !state) return;
@@ -121,8 +133,6 @@ Devvit.addCustomPostType({
         const suggestedMoves = [
             'Neon Slash',
             'Firewall Probe',
-            'Signal Feint',
-            'Social Engineering',
         ];
 
         return (
@@ -131,6 +141,7 @@ Devvit.addCustomPostType({
                     episode={episode}
                     title="VALKYRIE ARENA"
                     subtitle="Keys enhance dialogue. Keyless duels still hit."
+                    showImage={showImage}
                     rightActionLabel="🏆 Rank"
                     onRightAction={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />
@@ -180,13 +191,18 @@ Devvit.addCustomPostType({
 
                     {/* Controls */}
                     <vstack gap="small">
-                        <hstack gap="small">
+                        <vstack gap="small">
                             {suggestedMoves.map((m) => (
-                                <button key={m} appearance="secondary" size="small" onPress={async () => { setMove(m); await server.submitMove(userId, m); setMove(''); await refresh(); }} disabled={state.gameOver || state.turn === 'ai'}>
+                                <button
+                                    key={m}
+                                    appearance="secondary"
+                                    onPress={async () => { await server.submitMove(userId, m); setMove(''); await refresh(); }}
+                                    disabled={state.gameOver || state.turn === 'ai'}
+                                >
                                     {m}
                                 </button>
                             ))}
-                        </hstack>
+                        </vstack>
                         <textfield placeholder="Cast Spell or Hack System..." onChange={(v) => setMove(v)} />
                         <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>
                             {state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}
@@ -203,7 +219,12 @@ Devvit.addCustomPostType({
 
                 {/* Brand Footer */}
                 <hstack alignment="center middle" padding="small">
-                    <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+                    <vstack>
+                        <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
+                        <text size="small" style="mono" color={Theme.colors.primary} wrap>
+                            {`ARENA ${episode.id} | hp:${state.userHealth}-${state.aiHealth} | #ValkyrieArena`}
+                        </text>
+                    </vstack>
                 </hstack>
             </vstack>
         );

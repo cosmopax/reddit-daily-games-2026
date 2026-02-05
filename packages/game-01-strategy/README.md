@@ -1,24 +1,31 @@
-# GET RICH LAZY
+# NEON SYNDICATE TYCOON (Get Rich Lazy)
 
 > **cosmopax | Total Gamification**
 
-An idle strategy game for Reddit where you build an investment portfolio and watch your assets grow hourly.
+A character-first daily idle strategy game for Reddit: run contracts, unlock advisors, and compound your influence.
+
+## How To Play (Works Without API Keys)
+1. Install the app on a subreddit.
+2. In the subreddit menu, run: `Open/Create Today's Neon Syndicate Post`.
+3. Open the created post and play the daily episode.
+
+Tip: Pin the daily post for a clean "arcade cabinet" feel.
 
 ## Gameplay
-- Choose from 5+ asset types (Meme Stocks, Crypto, NFTs, Real Estate, Bonds)
-- Each asset generates passive income based on market risk/reward
-- Hourly tick updates your portfolio automatically
-- Leaderboard tracks the richest players in your subreddit
+- Pick 1 of 2 daily contracts (instant reward + 24h income boost)
+- Buy assets to generate passive hourly income
+- Unlock advisors automatically as your net worth grows
+- Climb the subreddit leaderboard by net worth
 
-## API Keys Required
+## API Keys (Optional Enhancements)
+Keys are optional. The game is fully playable without them.
+
 | Key | Purpose |
 |-----|---------|
-| `GEMINI_API_KEY` | AI-powered market sentiment analysis |
+| `GEMINI_API_KEY` | Optional: enhanced flavor in future episodes |
 
-## Set API Keys
-```bash
-devvit settings set GEMINI_API_KEY "your-key-here"
-```
+## Configure Keys
+Use the installation settings UI on developers.reddit.com (recommended). The CLI `devvit settings set` can be blocked by Reddit backend limitations.
 
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

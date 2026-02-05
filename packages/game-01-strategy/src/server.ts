@@ -1,248 +1,357 @@
 import { Context, JobContext } from '@devvit/public-api';
-import { RedisWrapper, DailyScheduler, ServiceProxy, Leaderboard } from 'shared';
-import { ASSETS, AssetType, UserState, ExecutiveAdvisor } from './types';
+import { Leaderboard, getTodayEpisode } from 'shared';
+import { ASSETS, AssetType } from './types';
 
-const USER_KEY_PREFIX = 'user:v1:';
+const V2_KEY_PREFIX = 'strategy:v2:';
 const STARTER_CASH = ASSETS.lemonade_stand.cost;
 
-export class GameStrategyServer {
-    redis: RedisWrapper;
-    scheduler: DailyScheduler;
+type StrategyBoost = {
+    sourceEpisodeId: string;
+    choiceId: 'a' | 'b';
+    label: string;
+    multiplier: number;
+    reward: number;
+    expiresAt: number;
+};
 
+export type Advisor = {
+    id: string;
+    name: string;
+    role: string;
+    perk: string;
+    multiplier: number;
+};
+
+export type ContractOption = {
+    id: 'a' | 'b';
+    title: string;
+    flavor: string;
+    reward: number;
+    multiplier: number;
+};
+
+type StrategyStateV2 = {
+    cash: number;
+    lastTick: number;
+    assets: Record<AssetType, number>;
+    advisors: Advisor[];
+    boost?: StrategyBoost;
+    contractsDone: string[]; // episode ids
+};
+
+export type StrategyView = {
+    cash: number;
+    lastTick: number;
+    assets: Record<AssetType, number>;
+    assetValue: number;
+    hourlyIncome: number;
+    incomeMultiplier: number;
+    netWorth: number;
+    tier: string;
+    totalAssetsOwned: number;
+    advisors: Advisor[];
+    boost?: StrategyBoost;
+    todaysContracts: ContractOption[];
+    hasAcceptedContractToday: boolean;
+};
+
+function clampKeepLast<T>(arr: T[], keep: number): T[] {
+    if (arr.length <= keep) return arr;
+    return arr.slice(arr.length - keep);
+}
+
+function computeAssetValue(assets: Record<AssetType, number>): number {
+    let value = 0;
+    for (const [id, cfg] of Object.entries(ASSETS) as [AssetType, (typeof ASSETS)[AssetType]][]) {
+        value += (assets[id] || 0) * cfg.cost;
+    }
+    return value;
+}
+
+function computeBaseHourlyIncome(assets: Record<AssetType, number>): number {
+    let income = 0;
+    for (const [id, cfg] of Object.entries(ASSETS) as [AssetType, (typeof ASSETS)[AssetType]][]) {
+        income += (assets[id] || 0) * cfg.incomePerHour;
+    }
+    return income;
+}
+
+function tierForNetWorth(netWorth: number): string {
+    if (netWorth >= 20000) return 'Neon Titan';
+    if (netWorth >= 6000) return 'Street Baron';
+    if (netWorth >= 1200) return 'Hustler';
+    return 'Rookie';
+}
+
+function getAdvisorCatalog(): Array<{ threshold: number; advisor: Advisor }> {
+    return [
+        {
+            threshold: 500,
+            advisor: { id: 'nyx', name: 'Oracle Nyx', role: 'Seer', perk: '+5% income (pattern edge)', multiplier: 1.05 },
+        },
+        {
+            threshold: 2500,
+            advisor: { id: 'vex', name: 'CEO Vex', role: 'Rival Coach', perk: '+5% income (pressure)', multiplier: 1.05 },
+        },
+        {
+            threshold: 9000,
+            advisor: { id: 'quanta', name: 'Quanta', role: 'Quantum Analyst', perk: '+5% income (delta hedges)', multiplier: 1.05 },
+        },
+    ];
+}
+
+export class GameStrategyServer {
     context: Context | JobContext;
 
     constructor(context: Context | JobContext) {
         this.context = context;
-        this.redis = new RedisWrapper(context.redis);
-        this.scheduler = new DailyScheduler(context.scheduler);
     }
 
-    private getUserKey(userId: string): string {
-        return `${USER_KEY_PREFIX}${userId}`;
+    private key(userId: string): string {
+        return `${V2_KEY_PREFIX}${userId}`;
     }
 
-    async getUserState(userId: string): Promise<UserState> {
-        // Rehydrate from Redis using our optimized wrapper
-        const keys = ['cash', 'lastTick', 'advisors_json', ...Object.keys(ASSETS).map(id => `asset_${id}`)];
-        const data = await this.redis.getPackedState(this.getUserKey(userId), 'state', keys);
+    private async migrateFromV1IfPresent(userId: string): Promise<StrategyStateV2 | null> {
+        // V1 was stored as a delimited packed hash field on `user:v1:<id>`; advisors were not reliably persisted.
+        const v1Key = `user:v1:${userId}`;
+        const packed = await this.context.redis.hGet(v1Key, 'state');
+        if (!packed) return null;
 
-        const assets: Record<string, number> = {};
-        let hourlyIncome = 0;
-        let assetValue = 0;
+        const parts = packed.split(':');
+        const cash = Number(parts[0] || 0) || 0;
+        const lastTick = Number(parts[1] || 0) || Date.now();
 
-        Object.keys(ASSETS).forEach(id => {
-            const count = data[`asset_${id}`] || 0;
-            assets[id] = count;
-            // Calculate stats
-            const config = ASSETS[id as AssetType];
-            if (config) {
-                hourlyIncome += count * config.incomePerHour;
-                assetValue += count * config.cost;
-            }
-        });
+        // parts[2] was intended as advisors_json (but was numeric-packed); ignore it.
+        const assetIds = Object.keys(ASSETS) as AssetType[];
+        const assets: Record<AssetType, number> = {} as any;
+        for (let i = 0; i < assetIds.length; i++) {
+            const idx = 3 + i;
+            assets[assetIds[i]] = Number(parts[idx] || 0) || 0;
+        }
 
-        const lastTick = data['lastTick'] || Date.now();
-        let cash = data['cash'] || 0;
-        let advisors: ExecutiveAdvisor[] = [];
-        if (data['advisors_json']) {
+        const state: StrategyStateV2 = {
+            cash,
+            lastTick,
+            assets,
+            advisors: [],
+            contractsDone: [],
+        };
+        await this.context.redis.set(this.key(userId), JSON.stringify(state));
+        return state;
+    }
+
+    private async loadState(userId: string): Promise<{ state: StrategyStateV2; dirty: boolean }> {
+        const raw = await this.context.redis.get(this.key(userId));
+        if (raw) {
             try {
-                advisors = JSON.parse(data['advisors_json'] as unknown as string);
-            } catch (e) { }
-        }
-
-        // Prevent dead-start accounts: users must be able to buy at least one first asset.
-        // This also recovers previously stuck users with 0 cash and 0 assets.
-        if (assetValue === 0 && cash < STARTER_CASH) {
-            cash = STARTER_CASH;
-            await this.redis.savePackedState(this.getUserKey(userId), 'state', {
-                cash,
-                lastTick,
-                advisors_json: JSON.stringify(advisors),
-                ...Object.fromEntries(Object.keys(ASSETS).map((id) => [`asset_${id}`, assets[id] || 0])),
-            });
-        }
-
-        // Lazy Evaluation: Apply pending income
-        const now = Date.now();
-        const elapsedHours = (now - lastTick) / 3600000;
-        if (elapsedHours > 0) {
-            const earned = hourlyIncome * elapsedHours;
-            cash += earned;
-
-            // Auto-save logic could go here, but strictly we might wait for a user action 
-            // OR save if significant time passed. For "Robustness", we save on read to keep state fresh.
-            // However, saving on every read is heavy. We'll return the projected state,
-            // and only save when 'buyAsset' or specific 'sync' is called, OR if gap is large.
-            // For now, let's keep it pure query unless gap > 1 min
-            if (now - lastTick > 60000) {
-                // Update specific fields only to avoid race conditions? 
-                // RedisWrapper packs everything. We have to save all.
-                // We will defer save to actions to be safe, but return computed 'current' values.
-                // Actually, if we don't save, the user sees "Earned $X" but if they don't click buy, it's lost on next reload?
-                // Yes, we MUST save or at least return the updated state and let the client know.
-                // A better pattern: "claim" endpoint. 
-                // BUT "Get Rich Lazy" implies auto.
-                // Let's UPDATE the cache in memory (data object) basically conceptually,
-                // but for this function, just return calculated values.
-                // Real persistence happens on 'buy' or 'tick'.
+                return { state: JSON.parse(raw) as StrategyStateV2, dirty: false };
+            } catch {
+                // fall through to re-init
             }
+        }
+
+        const migrated = await this.migrateFromV1IfPresent(userId);
+        if (migrated) return { state: migrated, dirty: false };
+
+        const assets: Record<AssetType, number> = {
+            lemonade_stand: 0,
+            newspaper_route: 0,
+            crypto_miner: 0,
+            ai_startup: 0,
+        };
+        const state: StrategyStateV2 = {
+            cash: STARTER_CASH,
+            lastTick: Date.now(),
+            assets,
+            advisors: [],
+            contractsDone: [],
+        };
+        await this.context.redis.set(this.key(userId), JSON.stringify(state));
+        return { state, dirty: false };
+    }
+
+    private computeIncomeMultiplier(state: StrategyStateV2, now: number): { mult: number; boost?: StrategyBoost; dirty: boolean } {
+        let dirty = false;
+        let mult = 1;
+
+        // Advisors stack multiplicatively (small, predictable).
+        for (const a of state.advisors || []) {
+            mult *= a.multiplier || 1;
+        }
+
+        // Contract boost (expires).
+        if (state.boost) {
+            if (state.boost.expiresAt <= now) {
+                state.boost = undefined;
+                dirty = true;
+            } else {
+                mult *= state.boost.multiplier;
+            }
+        }
+
+        return { mult, boost: state.boost, dirty };
+    }
+
+    private async applyAccruedIncome(state: StrategyStateV2): Promise<{ state: StrategyStateV2; dirty: boolean; hourlyIncome: number; incomeMultiplier: number; assetValue: number }> {
+        const now = Date.now();
+        const baseIncome = computeBaseHourlyIncome(state.assets);
+        const assetValue = computeAssetValue(state.assets);
+
+        const totalAssetsOwned = Object.values(state.assets).reduce((s, n) => s + (n || 0), 0);
+        if (totalAssetsOwned === 0 && state.cash < STARTER_CASH) {
+            state.cash = STARTER_CASH;
+        }
+
+        const multResult = this.computeIncomeMultiplier(state, now);
+        const incomeMultiplier = multResult.mult;
+        let dirty = multResult.dirty;
+
+        const elapsedMs = Math.max(0, now - (state.lastTick || now));
+        const elapsedHours = elapsedMs / 3600000;
+        if (elapsedHours > 0.0001 && baseIncome > 0) {
+            const earned = baseIncome * incomeMultiplier * elapsedHours;
+            state.cash += earned;
+            state.lastTick = now;
+            dirty = true;
+        }
+
+        return { state, dirty, hourlyIncome: Math.round(baseIncome * incomeMultiplier), incomeMultiplier, assetValue };
+    }
+
+    private maybeUnlockAdvisors(state: StrategyStateV2, netWorth: number): boolean {
+        let dirty = false;
+        const catalog = getAdvisorCatalog();
+        const existing = new Set((state.advisors || []).map((a) => a.id));
+        for (const item of catalog) {
+            if (netWorth >= item.threshold && !existing.has(item.advisor.id)) {
+                state.advisors = [...(state.advisors || []), item.advisor];
+                dirty = true;
+            }
+        }
+        return dirty;
+    }
+
+    private contractsForEpisode(episodeId: string, signalA: string, signalB: string): ContractOption[] {
+        // Deterministic-ish: keep stable so players can discuss.
+        const a: ContractOption = {
+            id: 'a',
+            title: `Sweep ${signalA}`,
+            flavor: 'Quiet acquisition. Clean compounding.',
+            reward: 160,
+            multiplier: 1.12,
+        };
+        const b: ContractOption = {
+            id: 'b',
+            title: `Front-run ${signalB}`,
+            flavor: 'Risky sprint. Loud profit.',
+            reward: 320,
+            multiplier: 1.07,
+        };
+        // Subtle variation by episode parity.
+        const day = Number(episodeId.slice(-2));
+        return day % 2 === 0 ? [a, b] : [b, a];
+    }
+
+    async getUserView(userId: string): Promise<StrategyView> {
+        const episode = await getTodayEpisode(this.context as Context);
+        const { state: loaded, dirty: preDirty } = await this.loadState(userId);
+        const { state, dirty: incomeDirty, hourlyIncome, incomeMultiplier, assetValue } = await this.applyAccruedIncome(loaded);
+
+        const netWorth = Math.round(state.cash + assetValue);
+        const unlockDirty = this.maybeUnlockAdvisors(state, netWorth);
+
+        const totalAssetsOwned = Object.values(state.assets).reduce((s, n) => s + (n || 0), 0);
+
+        const signalA = episode.signals?.[0]?.query || 'Signal A';
+        const signalB = episode.signals?.[1]?.query || 'Signal B';
+        const todaysContracts = this.contractsForEpisode(episode.id, signalA, signalB);
+
+        const hasAcceptedContractToday = (state.contractsDone || []).includes(episode.id);
+
+        const dirty = preDirty || incomeDirty || unlockDirty;
+        if (dirty) {
+            await this.context.redis.set(this.key(userId), JSON.stringify(state));
         }
 
         return {
-            cash,
-            lastTick: now, // We project forward to 'now'
-            netWorth: cash + assetValue,
-            assets: assets as Record<AssetType, number>,
-            advisors
+            cash: Math.round(state.cash),
+            lastTick: state.lastTick,
+            assets: state.assets,
+            assetValue,
+            hourlyIncome,
+            incomeMultiplier,
+            netWorth,
+            tier: tierForNetWorth(netWorth),
+            totalAssetsOwned,
+            advisors: state.advisors || [],
+            boost: state.boost,
+            todaysContracts,
+            hasAcceptedContractToday,
         };
     }
 
-    async saveUserState(userId: string, state: UserState): Promise<void> {
-        const data: Record<string, number> = {
-            cash: state.cash,
-            lastTick: state.lastTick,
+    async acceptContract(userId: string, choiceId: 'a' | 'b'): Promise<boolean> {
+        const episode = await getTodayEpisode(this.context as Context);
+        const { state } = await this.loadState(userId);
+        const signalA = episode.signals?.[0]?.query || 'Signal A';
+        const signalB = episode.signals?.[1]?.query || 'Signal B';
+        const contracts = this.contractsForEpisode(episode.id, signalA, signalB);
+
+        if ((state.contractsDone || []).includes(episode.id)) return false;
+        const chosen = contracts.find((c) => c.id === choiceId) || contracts[0];
+
+        state.cash += chosen.reward;
+        state.boost = {
+            sourceEpisodeId: episode.id,
+            choiceId,
+            label: chosen.title,
+            multiplier: chosen.multiplier,
+            reward: chosen.reward,
+            expiresAt: Date.now() + 24 * 60 * 60 * 1000,
         };
-        Object.entries(state.assets).forEach(([id, count]) => {
-            data[`asset_${id}`] = count;
-        });
-        await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
+        state.contractsDone = clampKeepLast([...(state.contractsDone || []), episode.id], 14);
+        state.lastTick = Date.now();
+        await this.context.redis.set(this.key(userId), JSON.stringify(state));
+
+        await this.syncLeaderboard(userId, Math.round(state.cash + computeAssetValue(state.assets)));
+        return true;
     }
 
     async buyAsset(userId: string, assetType: AssetType, amount: number = 1): Promise<boolean> {
-        const config = ASSETS[assetType];
-        // Must get LATEST state including pending income
-        // We need a version of getUserState that actually SAVES the catch-up income before transaction
-        // Start by getting "view" state
-        let state = await this.getUserState(userId);
+        const cfg = ASSETS[assetType];
+        const { state } = await this.loadState(userId);
+        const incomeApplied = await this.applyAccruedIncome(state);
+        const s = incomeApplied.state;
 
-        // Calculate cost
-        // Fractional buying: simplified cost = base_cost * amount
-        // (No exponential ramp logic in this MVP?)
-        const totalCost = config.cost * amount;
+        const totalCost = cfg.cost * amount;
+        if (s.cash < totalCost) return false;
 
-        if (state.cash >= totalCost) {
-            state.cash -= totalCost;
-            state.assets[assetType] = (state.assets[assetType] || 0) + amount;
+        s.cash -= totalCost;
+        s.assets[assetType] = (s.assets[assetType] || 0) + amount;
+        s.lastTick = Date.now();
+        await this.context.redis.set(this.key(userId), JSON.stringify(s));
 
-            // Critical: Update lastTick to NOW because we just consumed the accrued cash/time delta
-            // getUserState returns 'now' as lastTick if we use the projected value.
-            // So saving 'state' as returned by getUserState is correct.
-            await this.saveUserState(userId, state);
-            return true;
-        }
-        return false;
+        await this.syncLeaderboard(userId, Math.round(s.cash + computeAssetValue(s.assets)));
+        return true;
     }
 
-    /**
-     * Buys as much of an asset as possible with current cash
-     * supports fractional shares if needed.
-     */
-    async investMax(userId: string, assetType: AssetType): Promise<number> {
-        let state = await this.getUserState(userId);
-        const config = ASSETS[assetType];
-        if (state.cash <= 0) return 0;
-
-        const maxAmount = state.cash / config.cost;
-        if (maxAmount > 0) {
-            state.cash = 0; // Utilized all cash
-            state.assets[assetType] = (state.assets[assetType] || 0) + maxAmount;
-            await this.saveUserState(userId, state);
-            return maxAmount;
-        }
-        return 0;
+    async onHourlyTick(_event: any) {
+        // No-op for now: we accrue lazily on view/actions.
     }
 
-    /**
-     * Run hourly to grant passive income.
-     * To avoid valid timeout, we might process a shard.
-     */
-    async onHourlyTick(event: any) {
-        console.log("Processing hourly tick...");
-        // Ideally, we'd iterate a specific ZSET shard of active users.
-        // For MVP, we pass. Implementation details for sharding would go here.
-    }
-    /**
-     * Unlocks a new "Executive Advisor" if net worth milestones are met.
-     */
-    async unlockAdvisor(userId: string): Promise<ExecutiveAdvisor | null> {
-        let state = await this.getUserState(userId);
-
-        const currentAdvisors = state.advisors || [];
-        if (currentAdvisors.length >= 4) return null; // Max 4
-
-        const cost = 1000000 * Math.pow(10, currentAdvisors.length);
-        if (state.cash < cost) return null; // Not liquid enough (changed from net worth to cash for challenge)
-
-        // Deduct Cash
-        state.cash -= cost;
-        state.lastTick = Date.now();
-
-        // Generate Advisor
-        // @ts-ignore - Context mismatch fix later?
-        const proxy = new ServiceProxy(this.context);
-        const archetypes = ['CFO', 'Growth Hacker', 'Quantum Analyst', 'Corporate Spy'];
-        const role = archetypes[currentAdvisors.length % archetypes.length];
-
-        const portrait = await proxy.generateCharacterPortrait(role, 'Corporate Cyberpunk');
-
-        const advisor: ExecutiveAdvisor = {
-            id: Math.random().toString(36).substring(7),
-            name: `Executive ${Math.floor(Math.random() * 999)}`,
-            role: role,
-            benefit: `+${(currentAdvisors.length + 1) * 10}% Income`,
-            multiplier: 1 + ((currentAdvisors.length + 1) * 0.1),
-            portraitUrl: portrait
-        };
-
-        const newAdvisors = [...currentAdvisors, advisor];
-
-        // Save (Requires updating saveUserState to handle advisors)
-        // We need to modify saveUserState logic too because it uses RedisWrapper packed state.
-        // RedisWrapper packed state works for simple keys. Arrays are tricky.
-        // We will store advisors as a JSON blob in a separate key or pack it as 'advisors_json' string?
-        // Let's store as 'advisors_json' field.
-        await this.saveWithAdvisors(userId, state, newAdvisors);
-
-        // Sync to Leaderboard (High Score = Net Worth)
-        const lb = new Leaderboard(this.context, 'game1_strategy');
-        // We need username. Context doesn't always have it in older triggers, but useful here.
-        // We'll try to get it from context if possible, or fetch.
-        // For now, pass 'Trader' if unknown, but usually we can get it or cache it.
-        // Assuming we rely on client to pass username? No, server side.
-        // We will just use userId for now, update metadata later?
-        // Actually, let's fetch user if we can.
+    async syncLeaderboard(userId: string, netWorth: number): Promise<void> {
+        const lb = new Leaderboard(this.context as Context, 'game1_strategy');
         let username = 'Unknown CEO';
         try {
-            const user = await this.context.reddit.getUserById(userId);
+            const user = await (this.context as Context).reddit.getUserById(userId);
             if (user) username = user.username;
-        } catch (e) { }
-
-        // NetWorth calculation might be projected. Let's use the current 'cash + assetVal'.
-        // Recalculate net worth to be sure
-        let currentNetWorth = state.cash;
-        Object.keys(ASSETS).forEach(id => {
-            const count = state.assets[id as AssetType] || 0;
-            currentNetWorth += count * ASSETS[id as AssetType].cost;
-        });
-
-        await lb.submitScore(userId, username, currentNetWorth, advisor.portraitUrl);
-
-        return advisor;
+        } catch { }
+        await lb.submitScore(userId, username, netWorth);
     }
 
-    async saveWithAdvisors(userId: string, state: UserState, advisors: ExecutiveAdvisor[]) {
-        const data: Record<string, any> = {
-            cash: state.cash,
-            lastTick: state.lastTick,
-            advisors_json: JSON.stringify(advisors) // Store as JSON string
-        };
-        Object.entries(state.assets).forEach(([id, count]) => {
-            data[`asset_${id}`] = count;
-        });
-        await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
-    }
     async getLeaderboard() {
-        const lb = new Leaderboard(this.context, 'game1_strategy');
+        const lb = new Leaderboard(this.context as Context, 'game1_strategy');
         return lb.getTop(10);
     }
 }
+

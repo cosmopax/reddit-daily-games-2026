@@ -1,26 +1,29 @@
-# OUTSMARTED
+# VALKYRIE ARENA: DUEL OF MINDS (Outsmarted Again)
 
 > **cosmopax | Total Gamification**
 
-Battle AI opponents in strategic duels! Test your wits against Gemini-powered adversaries.
+A narrative duel with a reliable keyless opponent brain. Keys enhance dialogue only.
+
+## How To Play (Works Without API Keys)
+1. Install the app on a subreddit.
+2. In the subreddit menu, run: `Open/Create Today's Valkyrie Arena Post`.
+3. Execute moves and survive the arena.
 
 ## Gameplay
-- Enter the arena and face AI challengers
-- Make strategic moves to outsmart your opponent
-- AI adapts to your playstyle
-- Climb the ranks and prove you're the smartest
+- Big, mobile-friendly duel UI with suggested moves
+- AI opponent always responds (deterministic fallback avoids "Static Noise")
+- Wins increment your global leaderboard score
 
-## API Keys Required
+## API Keys (Optional Enhancements)
+Keys are optional. The duel is fully playable without them.
+
 | Key | Purpose |
 |-----|---------|
-| `GEMINI_API_KEY` | Powers the AI opponent intelligence |
-| `HUGGINGFACE_TOKEN` | Generates arena visuals |
+| `GEMINI_API_KEY` | Optional: enhanced opponent moves |
+| `HUGGINGFACE_TOKEN` | Optional: enhanced portrait generation (future) |
 
-## Set API Keys
-```bash
-devvit settings set GEMINI_API_KEY "your-key-here"
-devvit settings set HUGGINGFACE_TOKEN "your-token-here"
-```
+## Configure Keys
+Use the installation settings UI on developers.reddit.com (recommended). The CLI `devvit settings set` can be blocked by Reddit backend limitations.
 
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

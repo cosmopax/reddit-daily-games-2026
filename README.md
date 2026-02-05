@@ -1,50 +1,44 @@
 # Reddit Daily Games 2026 Hackathon
 
-**"Bios + Logos" | Daily Loops | Serverless Agential Systems**
+**Neon Daily Arcade v2**: 4 cohesive Devvit games designed to work in Reddit feeds with a daily-episode loop.
 
-This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**, designed for a high-retention "Daily Loop".
+## The Games
 
-## 🎮 The Games
+1. **Neon Syndicate Tycoon** (Strategy): contracts + compounding assets + advisors.
+2. **Hive Mind: Trend Heist** (Trivia): higher/lower + reason + streaks + archive.
+3. **Meme Wars: Neon Forge** (UGC): keyless caption battles + optional AI image forge.
+4. **Valkyrie Arena: Duel of Minds** (Combat): reliable keyless opponent brain (no "Static Noise").
 
-1.  **Get Rich Fast (Strategy)**: A passive income clicker.
-    *   *Tech*: Redis Bit-packing, Hourly Scheduler.
-2.  **Hive Mind (Trivia)**: Predict Google Trends.
-    *   *Tech*: External API Ingestion, ZSET Leaderboards.
-3.  **Meme Wars (Creativity)**: AI-generated memes (Flux.1).
-    *   *Tech*: Async Job Queues, Image Generation.
-4.  **AI Duel (Combat)**: Turn-based RPG vs Gemini 2.0.
-    *   *Tech*: LLM Integration, Complex State Machines.
+## Key Principles
 
-## 🏗 Architecture
+- **Works without API keys**: keys only enhance, never block gameplay.
+- **Mobile-first**: large tap targets, clear primary CTA, minimal scroll walls.
+- **UGC flywheel**: each session produces something shareable (strings, captions, votes, wins).
+- **Daily episode**: distinct "today" vibe via `packages/shared/src/Episode.ts`.
 
-*   **Monorepo**: Managed via `npm workspaces`.
-*   **Shared Kernel**: `packages/shared` contains:
-    *   `RedisWrapper`: Optimized storage (bit-packing).
-    *   `ServiceProxy`: Centralized external API handling (Compliance).
-    *   `Theme`: Standardized Design System.
-*   **Constraints**: Fully compliant with Devvit's 30s timeout and 500MB Redis limit.
+## How To Play (The Important Part)
 
-## 🚀 Getting Started
+Reddit's composer does not reliably show an "Apps" tab. Gameplay is driven by **subreddit menu actions**.
 
-1.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
+For each app, in the target subreddit run the menu item:
 
-2.  **Run a Game (Simulated)**:
-    ```bash
-    cd packages/game-01-strategy
-    devvit upload
-    ```
+- `Open/Create Today's Neon Syndicate Post`
+- `Open/Create Today's Trend Heist Post`
+- `Open/Create Today's Neon Forge Post`
+- `Open/Create Today's Valkyrie Arena Post`
 
-3.  **Deployment**:
-    *   Push to branch `main`.
-    *   CI/CD will handle Devvit publishing (Future State).
+This creates (or opens) a playable daily post in the feed. Pin those posts in a demo subreddit for judging.
 
-## 🛠 Next Steps (Handover)
+## Dev / Ops
 
-*   **API Integration**: See `prompts/api_integration_mission.md`.
-*   **UI Polish**: `shared` theme is implemented. Extend to Games 2 & 3.
+See:
+- `docs/NEXT_CODEX_HANDOVER_2026-02-04.md`
+- `docs/DEVVIT_OPERATIONS_RUNBOOK.md`
 
----
-*Created by Antigravity (Google DeepMind) for Reddit Hackathon 2026*
+Run Devvit commands from the package directory, e.g.:
+
+```bash
+cd packages/game-01-strategy
+npx devvit upload
+npx devvit install get_rich_lazy_dev
+```

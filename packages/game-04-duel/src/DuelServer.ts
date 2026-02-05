@@ -1,5 +1,6 @@
 import { Context } from '@devvit/public-api';
-import { RedisWrapper, ServiceProxy, Leaderboard } from 'shared';
+import { RedisWrapper, ServiceProxy, Leaderboard, episodePortraitUrl, getTodayEpisode } from 'shared';
+import { fallbackAiMove } from './fallbackAi';
 
 const USER_HEALTH = 100;
 const AI_HEALTH = 100;
@@ -31,20 +32,13 @@ export class DuelServer {
     async getDuelState(userId: string): Promise<DuelState> {
         const raw = await this.context.redis.get(this.getKey(userId));
         if (!raw) {
-            // Initialize new game with Cyber-Valkyrie
-            const proxy = new ServiceProxy(this.context);
+            // Initialize new game with Cyber-Valkyrie (keyless by default; keys only enhance)
+            const episode = await getTodayEpisode(this.context);
             const roles = ['Blade Dancer', 'Neural Witch', 'Chrome Assassin', 'Void Siren'];
-            const role = roles[Math.floor(Math.random() * roles.length)];
+            const role = roles[Math.abs(episode.paletteId) % roles.length];
             const name = `Valkyrie ${Math.floor(Math.random() * 99)}`;
 
-            // Generate "Hot" portrait
-            let portrait = '';
-            try {
-                portrait = await proxy.generateCharacterPortrait(role, 'Cyber-District-9', 'Valkyrie');
-            } catch (e) {
-                console.error("Portrait gen failed", e);
-                portrait = "https://placeholder.com/valkyrie_fallback.png";
-            }
+            const portrait = episodePortraitUrl(episode, `${name.toUpperCase()}`);
 
             const newState: DuelState = {
                 userHealth: USER_HEALTH,
@@ -88,22 +82,7 @@ export class DuelServer {
                 if (user) username = user.username;
             } catch (e) { }
 
-            // Increment separate win counter or just use score?
-            // For leaderboard, we want "Total Wins".
-            // We need to track wins in Redis separately or just increment score?
-            // ZINCRBY is perfect for this. But Leaderboard class used ZADD.
-            // Let's manually increment for now or update Leaderboard class.
-            // Actually, let's just create a 'wins' key and read it, then submit?
-            // Or just use ZINCRBY directly on the leaderboard key here?
-            // Cleanest: Leaderboard.incrementScore(userId, 1). 
-            // I'll stick to manual ZINCRBY here for speed, or basic submitScore if I track wins in state.
-            // Let's track wins in UserState? State is reset per game.
-            // We need a persistent user Stats key.
-            // QUICK IMPLEMENTATION: Just increment ZSET score directly.
-            await this.context.redis.zIncrBy(lb['getKey'](), userId, 1);
-            // Update metadata? Only if we have it?
-            // lb.submitScore overwrites score. 
-            // We'll skip metadata update for now on every win, or separate call.
+            await lb.incrementScore(userId, username, 1, state.opponentPortrait);
 
             return state;
         }
@@ -117,13 +96,17 @@ export class DuelServer {
     }
 
     async processAITurn(userId: string, state: DuelState): Promise<DuelState> {
-        // Fetch AI Move via Proxy (Gemini 2.0)
+        const episode = await getTodayEpisode(this.context);
+        // Fetch AI Move via Proxy (Gemini) with deterministic fallback (never show "Static Noise")
         const proxy = new ServiceProxy(this.context);
-        const { move, damage } = await proxy.generateAiMove(state.history);
+        let ai = await proxy.generateAiMove(state.history);
+        if (!ai.move || ai.move === 'Static Noise' || ai.move.startsWith('Systems Offline') || ai.damage <= 0) {
+            ai = fallbackAiMove(state.history, episode.id);
+        }
 
-        state.history.push(`AI used: ${move}`);
-        state.userHealth = Math.max(0, state.userHealth - damage);
-        state.history.push(`You took ${damage} damage!`);
+        state.history.push(`AI used: ${ai.move}`);
+        state.userHealth = Math.max(0, state.userHealth - ai.damage);
+        state.history.push(`You took ${ai.damage} damage!`);
 
         if (state.userHealth === 0) {
             state.gameOver = true;

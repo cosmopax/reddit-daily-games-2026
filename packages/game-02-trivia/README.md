@@ -1,26 +1,30 @@
-# HYPER HIVE MIND
+# HIVE MIND: TREND HEIST (Hyper Hive Minds)
 
 > **cosmopax | Total Gamification**
 
-A trivia game powered by real-time Google Trends. Guess which search term is trending higher!
+A daily intel puzzle: pick higher/lower, justify the choice, and build streaks.
+
+## How To Play (Works Without API Keys)
+1. Install the app on a subreddit.
+2. In the subreddit menu, run: `Open/Create Today's Trend Heist Post`.
+3. Open the created post and play the daily heist.
 
 ## Gameplay
-- Compare two trending search topics
-- Guess which one has more search volume
-- Build streaks for bonus points
-- Daily reset keeps competition fresh
+- Compare two daily signals (trends)
+- Guess whether Signal B is higher or lower than Signal A
+- Choose a reason (flavor) and share your result string in comments
+- Build streaks and climb the leaderboard
 
-## API Keys Required
+## API Keys (Optional Enhancements)
+Keys are optional. Without keys, the game uses curated, deterministic daily signals.
+
 | Key | Purpose |
 |-----|---------|
 | `SERPAPI_KEY` | Fetching real Google Trends data |
-| `GEMINI_API_KEY` | Generating clever trend hints |
+| `GEMINI_API_KEY` | Optional: enhanced hints (future) |
 
-## Set API Keys
-```bash
-devvit settings set SERPAPI_KEY "your-key-here"
-devvit settings set GEMINI_API_KEY "your-key-here"
-```
+## Configure Keys
+Use the installation settings UI on developers.reddit.com (recommended). The CLI `devvit settings set` can be blocked by Reddit backend limitations.
 
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

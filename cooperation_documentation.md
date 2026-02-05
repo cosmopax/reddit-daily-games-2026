@@ -82,6 +82,27 @@
   - `commit`: pending
   - `worktree`: `/Users/cosmopax/.codex/worktrees/00ba/reddit_hackathon_games`
 
+### [2026-02-05 02:35] - Neon Daily Arcade v2: Keyless + Episode + Menu-Driven Play (Agent: Codex GPT-5)
+- **Intent:** Turn the 4 MVP-feeling games into a cohesive, character-first cyberpunk daily arcade that is playable without API keys and easy to access via subreddit menus (composer Apps tab unreliable).
+- **Outcome:**
+  - Added shared **Daily Episode** system (`packages/shared/src/Episode.ts`) with curated deterministic signals and SerpApi upgrade path (avoids always-the-same fallback topics).
+  - Added shared **Neon Art** (SVG data-URI posters) and shared **EpisodeHeader** UI (`packages/shared/src/NeonArt.ts`, `packages/shared/src/components/NeonUI.tsx`).
+  - Updated all 4 apps with **Open/Create Today's Post** menu actions that persist and reopen the daily post per subreddit/app/day.
+  - Strategy reworked into **Neon Syndicate Tycoon**: daily contracts, advisor unlocks, income multiplier, JSON state v2 with v1 migration.
+  - Trivia reworked into **Hive Mind: Trend Heist**: episode signals, streak logic, reason step, archive with hive vote counts, share string.
+  - Meme reworked into **Meme Wars: Neon Forge**: keyless caption battle (UGC + voting) plus optional AI image forge.
+  - Duel reworked into **Valkyrie Arena**: keyless deterministic fallback AI to eliminate "Static Noise", suggested moves, fixed refresh flow, improved portraits via neon posters.
+  - Updated READMEs to mark API keys as **optional** and document the correct "create/open daily post" play path.
+- **Commands:**
+  - `rsync` node_modules from `/Users/cosmopax/.codex/worktrees/00ba/...` to this worktree (npm registry not reachable)
+  - `npx devvit whoami`
+  - `npx devvit upload` (from each package directory: game-01..04)
+- **Tests:**
+  - `npx devvit upload` succeeded for all 4 apps (build + upload) ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
+
 ### [2026-02-04 09:23] - Handover Docs Commit + Push (Agent: Codex GPT-5)
 - **Intent:** Finalize documentation handover task with committed and pushed branch state.
 - **Outcome:** Committed docs/handover updates and pushed branch `codex/handover-ops-20260204` to GitHub.

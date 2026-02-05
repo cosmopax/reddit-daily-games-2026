@@ -44,6 +44,21 @@ export class Leaderboard {
     }
 
     /**
+     * Increment a score (wins, karma, etc.) and refresh profile metadata.
+     * Returns the new score.
+     */
+    async incrementScore(userId: string, username: string, delta: number, avatarUrl?: string): Promise<number> {
+        const newScore = await this.context.redis.zIncrBy(this.getKey(), userId, delta);
+        const profileKey = `global:profile:${userId}`;
+        await this.context.redis.hSet(profileKey, {
+            username,
+            avatarUrl: avatarUrl || '',
+            lastSeen: Date.now().toString()
+        });
+        return newScore;
+    }
+
+    /**
      * Get top N players with their metadata.
      */
     async getTop(limit: number = 10): Promise<LeaderboardEntry[]> {

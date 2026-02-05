@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { DuelServer, DuelState } from './DuelServer';
-import { Theme, Leaderboard, LeaderboardUI } from 'shared';
+import { EpisodeHeader, Theme, Leaderboard, LeaderboardUI, getTodayEpisode } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
@@ -27,21 +27,36 @@ Devvit.addSettings([
 ]);
 
 Devvit.addMenuItem({
-    label: 'Create AI Duel Post',
+    label: "Open/Create Today's Valkyrie Arena Post",
     location: 'subreddit',
     onPress: async (_event, context) => {
+        const episode = await getTodayEpisode(context);
         const subreddit = await context.reddit.getCurrentSubreddit();
+        const postKey = `posts:v1:${subreddit.name}:outsmarted-again:${episode.id}`;
+        const existingPostId = await context.redis.get(postKey);
+        if (existingPostId) {
+            try {
+                const post = await context.reddit.getPostById(existingPostId);
+                context.ui.navigateTo(post);
+                context.ui.showToast("Opened today's post");
+                return;
+            } catch (e) {
+                await context.redis.del(postKey);
+            }
+        }
+
         const post = await context.reddit.submitPost({
-            title: 'Outsmarted Again - AI Duel',
+            title: `${episode.id} // Valkyrie Arena Duel`,
             subredditName: subreddit.name,
             preview: (
                 <vstack height="100%" width="100%" alignment="middle center">
-                    <text>Loading AI DUEL...</text>
+                    <text>Loading VALKYRIE ARENA...</text>
                 </vstack>
             ),
         });
+        await context.redis.set(postKey, post.id);
         context.ui.navigateTo(post);
-        context.ui.showToast('Created AI Duel post');
+        context.ui.showToast("Created today's post");
     },
 });
 
@@ -52,35 +67,32 @@ Devvit.addCustomPostType({
         const [userId] = useState(() => context.userId || 'test-user');
         const [move, setMove] = useState('');
 
-        const { data, loading, error, refresh } = useAsync<{ state: DuelState }>(async () => {
+        const { data, loading, refresh } = useAsync<{ episode: any; state: DuelState }>(async () => {
+            const episode = await getTodayEpisode(context);
             const state = await server.getDuelState(userId);
-            return { state };
+            return { episode, state };
         });
 
+        const episode = data?.episode;
         const state = data?.state;
 
         const onAttack = async () => {
             if (!move || !state) return;
-            // Optimistic update could happen here
             await server.submitMove(userId, move);
             setMove('');
-            // Trigger refresh
-            // In 0.11, simpler to just force re-render via state update or await the result
-            const newState = await server.getDuelState(userId);
-            // We lack a clean way to mutate 'data' from useAsync without re-triggering it.
-            // For now, we rely on standard re-render flow if we passed state down, 
-            // but useAsync holds it. We might need a local state copy.
+            await refresh();
         };
 
         const onReset = async () => {
             await server.resetGame(userId);
-            // refresh();
+            setMove('');
+            await refresh();
         };
 
         // Render the arena UI
 
         if (loading) return <vstack><text>Loading Arena...</text></vstack>;
-        if (!state) return <vstack><text>Error loading arena.</text></vstack>;
+        if (!state || !episode) return <vstack><text>Error loading arena.</text></vstack>;
 
         const [showLeaderboard, setShowLeaderboard] = useState(false);
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
@@ -106,19 +118,22 @@ Devvit.addCustomPostType({
             );
         }
 
+        const suggestedMoves = [
+            'Neon Slash',
+            'Firewall Probe',
+            'Signal Feint',
+            'Social Engineering',
+        ];
+
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
-                {/* Header */}
-                <vstack alignment="center middle" padding="small">
-                    <hstack alignment="space-between middle" width="100%">
-                        <spacer />
-                        <vstack alignment="center middle">
-                            <text size="xlarge" weight="bold" color={Theme.colors.primary}>OUTSMARTED</text>
-                            <text size="small" color={Theme.colors.textDim}>vs Gemini 2.0 Flash</text>
-                        </vstack>
-                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
-                    </hstack>
-                </vstack>
+                <EpisodeHeader
+                    episode={episode}
+                    title="VALKYRIE ARENA"
+                    subtitle="Keys enhance dialogue. Keyless duels still hit."
+                    rightActionLabel="🏆 Rank"
+                    onRightAction={() => { setShowLeaderboard(true); loadLeaderboard(); }}
+                />
 
                 <spacer size="medium" />
 
@@ -165,6 +180,13 @@ Devvit.addCustomPostType({
 
                     {/* Controls */}
                     <vstack gap="small">
+                        <hstack gap="small">
+                            {suggestedMoves.map((m) => (
+                                <button key={m} appearance="secondary" size="small" onPress={async () => { setMove(m); await server.submitMove(userId, m); setMove(''); await refresh(); }} disabled={state.gameOver || state.turn === 'ai'}>
+                                    {m}
+                                </button>
+                            ))}
+                        </hstack>
                         <textfield placeholder="Cast Spell or Hack System..." onChange={(v) => setMove(v)} />
                         <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>
                             {state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}

@@ -148,6 +148,19 @@
   - `commit`: `417ad1c`
   - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
 
+### [2026-02-05 03:20] - Add New Handover + Demo Playbook Pointers (Agent: Codex GPT-5)
+- **Intent:** Finish the “resume” loop by writing a fresh handover for a brand-new conversation and making demo setup + verification steps explicit for the Feb 13 deadline.
+- **Outcome:**
+  - Added `docs/NEXT_CODEX_HANDOVER_2026-02-05.md` as the new authoritative deadline-track handover.
+  - Added `CODEX_HANDOVER_4.md` as a root entrypoint pointing to the new handover + demo playbook.
+- **Commands:** (to be filled when committed/pushed)
+  - pending
+- **Tests:** (docs only)
+  - `sed`/`rg` inspection ✅
+- **Commit/Worktree:**
+  - `commit`: pending
+  - `worktree`: `/Users/cosmopax/.codex/worktrees/01fa/reddit_hackathon_games`
+
 ### [2026-02-04 09:23] - Handover Docs Commit + Push (Agent: Codex GPT-5)
 - **Intent:** Finalize documentation handover task with committed and pushed branch state.
 - **Outcome:** Committed docs/handover updates and pushed branch `codex/handover-ops-20260204` to GitHub.

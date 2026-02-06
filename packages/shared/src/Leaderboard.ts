@@ -23,6 +23,11 @@ export class Leaderboard {
         return `global:leaderboard:${this.gameId}`;
     }
 
+    /** Public accessor for the leaderboard ZSET key */
+    getLeaderboardKey(): string {
+        return this.getKey();
+    }
+
     /**
      * Submit a score. Uses ZADD.
      * Also stores metadata in a separate Hash if needed, but for Hackathon we might just pack it

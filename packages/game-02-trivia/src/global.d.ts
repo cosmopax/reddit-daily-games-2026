@@ -11,6 +11,7 @@ declare global {
             button: any;
             image: any;
             icon: any;
+            textfield: any;
         }
     }
 }

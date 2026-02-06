@@ -7,9 +7,18 @@ Devvit.configure({
     http: true,
     redis: true,
     scheduler: {
-        daily_reset: async (event, context) => {
-            console.log("Ingesting Daily Trends...");
-            // const trends = await context.http.send(...)
+        daily_reset: async (_event, context) => {
+            console.log('[daily_reset] Ingesting Daily Trends...');
+            try {
+                const proxy = new ServiceProxy(context);
+                const trends = await proxy.fetchDailyTrends(2);
+                await context.redis.set('daily_trend_a', JSON.stringify(trends[0]));
+                await context.redis.set('daily_trend_b', JSON.stringify(trends[1]));
+                await context.redis.del('daily_participants');
+                console.log(`[daily_reset] Stored trends: "${trends[0].query}" vs "${trends[1].query}"`);
+            } catch (e) {
+                console.error('[daily_reset] Failed to ingest trends:', e);
+            }
         }
     }
 });
@@ -38,45 +47,8 @@ Devvit.addCustomPostType({
         const proxy = new ServiceProxy(context);
         const [userId] = useState(() => context.userId || 'anon');
         const [hasPlayed, setHasPlayed] = useState(false);
-        const [dataLoaded, setDataLoaded] = useState(false);
-        const [trends, setTrends] = useState<{ a: any, b: any } | null>(null);
         const [result, setResult] = useState<'correct' | 'wrong' | null>(null);
 
-        const loadData = async () => {
-            // 1. Check if user played
-            const played = await context.redis.zScore('daily_participants', userId);
-            // Using zScore on a Set (SISMEMBER) is better but Devvit 0.11 might limit Set ops?
-            // Actually, the task said "BitField" but I'll use a Hash or ZSet for simplicity.
-            // Let's use simple key lookup for this user if we want to be safe, 
-            // but 'daily_participants' as a Hash {userId: 1} is easiest.
-            // Wait, ZSet is good for leaderboards.
-            // Let's use string key for simple boolean: `user:${userId}:played_today`? No, too many keys.
-            // HGET daily_participants userId
-            const p = await context.redis.hGet('daily_participants', userId);
-            setHasPlayed(!!p);
-
-            // 2. Load Trends
-            const rawA = await context.redis.get('daily_trend_a');
-            const rawB = await context.redis.get('daily_trend_b');
-
-            if (rawA && rawB) {
-                setTrends({ a: JSON.parse(rawA), b: JSON.parse(rawB) });
-            } else {
-                // Fallback if scheduler hasn't run
-                const fresh = await proxy.fetchDailyTrends(2);
-                setTrends({ a: fresh[0], b: fresh[1] });
-                // Optionally save them here too if missing (Lazy Init)
-            }
-            setDataLoaded(true);
-        };
-
-        // Initial load
-        if (!dataLoaded) {
-            // We can't use useEffect. We just run async once via useAsync effectively?
-            // But useAsync is cleaner.
-        }
-
-        // Re-implement with useAsync for cleanliness
         const { data, loading } = useAsync(async () => {
             const played = await context.redis.hGet('daily_participants', userId);
             const rawA = await context.redis.get('daily_trend_a');
@@ -115,6 +87,16 @@ Devvit.addCustomPostType({
                 stats.totalWins += 1;
                 if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
                 context.ui.showToast(`Correct! Streak: ${stats.streak}`);
+
+                // Share to comment on streak milestones
+                if (stats.streak >= 3 && context.postId) {
+                    try {
+                        await context.reddit.submitComment({
+                            id: context.postId,
+                            text: `I'm on a ${stats.streak}-day streak in Hive Mind Gauntlet! (${stats.totalWins} total wins) Can you beat it?`
+                        });
+                    } catch (e) { /* Comment sharing is optional */ }
+                }
 
                 // Submit to Leaderboard (Total Wins)
                 const lb = new Leaderboard(context, 'game2_trivia');
@@ -159,6 +141,8 @@ Devvit.addCustomPostType({
                     isLoading={lbLoading}
                     onRefresh={loadLeaderboard}
                     onClose={() => setShowLeaderboard(false)}
+                    scoreLabel="wins"
+                    currentUserId={userId}
                 />
             );
         }
@@ -196,7 +180,16 @@ Devvit.addCustomPostType({
                         {showResult ? (
                             <vstack alignment="center middle">
                                 <text size="xlarge" weight="bold" color={Theme.colors.gold}>{currentTrends.b.trafficDisplay}</text>
-                                <text size="large" color={Theme.colors.text}>{data.played || result === 'correct' || result === 'wrong' ? ((data.played && !result) ? "ALREADY PLAYED" : (result === 'correct' ? "CORRECT" : "WRONG")) : "DONE"}</text>
+                                <text size="large" weight="bold" color={
+                                    result === 'correct' ? Theme.colors.success
+                                    : result === 'wrong' ? Theme.colors.danger
+                                    : Theme.colors.textDim
+                                }>{
+                                    data.played && !result ? 'ALREADY PLAYED'
+                                    : result === 'correct' ? 'CORRECT!'
+                                    : result === 'wrong'   ? 'WRONG!'
+                                    : 'DONE'
+                                }</text>
                             </vstack>
                         ) : (
                             <vstack gap="medium">

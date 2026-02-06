@@ -13,23 +13,25 @@ export class RedisWrapper {
      * For simplicity here, we assume storing efficient strings or using HSETs effectively.
      * Real bit-packing in JS/TS often uses DataView/ArrayBuffer.
      */
-    async savePackedState(key: string, field: string, data: Record<string, number>): Promise<void> {
-        // Example: Pack inventory {gold: 100, wood: 50} -> "100:50" or similar compact format
-        // or use Buffer.from(...) if Devvit supports binary strings.
-        // For this hackathon, we'll strict to minimized JSON or delimited strings.
-        const packed = Object.values(data).join(':');
+    async savePackedState(key: string, field: string, data: Record<string, number | string>): Promise<void> {
+        const packed = JSON.stringify(data);
         await this.redis.hSet(key, { [field]: packed });
     }
 
-    async getPackedState(key: string, field: string, keys: string[]): Promise<Record<string, number>> {
+    async getPackedState(key: string, field: string, keys: string[]): Promise<Record<string, number | string>> {
         const val = await this.redis.hGet(key, field);
         if (!val) return {};
-        const values = val.split(':').map(Number);
-        const result: Record<string, number> = {};
-        keys.forEach((k, i) => {
-            result[k] = values[i] || 0;
-        });
-        return result;
+        try {
+            return JSON.parse(val);
+        } catch {
+            // Fallback: legacy colon-delimited format
+            const values = val.split(':').map(Number);
+            const result: Record<string, number> = {};
+            keys.forEach((k, i) => {
+                result[k] = values[i] || 0;
+            });
+            return result;
+        }
     }
 
     /**

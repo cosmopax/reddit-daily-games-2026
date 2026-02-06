@@ -1,5 +1,5 @@
 import { Context } from '@devvit/public-api';
-import { RedisWrapper, DailyScheduler } from 'shared';
+import { RedisWrapper, DailyScheduler, ServiceProxy } from 'shared';
 
 const TRENDS_KEY = 'daily:trends';
 const ARCHIVE_KEY = 'archive:trends';
@@ -30,7 +30,8 @@ export class TrendIngestor {
 
         // 2. Fetch New Trend via Proxy
         const proxy = new ServiceProxy(this.context);
-        const newTrend = await proxy.fetchDailyTrend();
+        const trends = await proxy.fetchDailyTrends(2);
+        const newTrend = JSON.stringify(trends);
 
         // 3. Update State
         await this.context.redis.set(TRENDS_KEY, newTrend);

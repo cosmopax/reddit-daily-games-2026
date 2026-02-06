@@ -1,4 +1,5 @@
 name: get-rich-lazy
 version: 0.0.1
+description: "Build your passive income empire! Buy assets, earn hourly returns, compete on the leaderboard."
 scheduler:
   hourly_tick: 0 * * * *

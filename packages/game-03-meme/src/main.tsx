@@ -1,4 +1,5 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import './global.d.ts';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
@@ -23,6 +24,13 @@ Devvit.addSettings([
         isSecret: false,
         scope: SettingScope.Installation,
     },
+    {
+        name: 'REPLICATE_API_TOKEN',
+        label: 'Replicate API Token (Flux.1)',
+        type: 'string',
+        isSecret: false,
+        scope: SettingScope.Installation,
+    },
 ]);
 
 Devvit.addCustomPostType({
@@ -34,6 +42,7 @@ Devvit.addCustomPostType({
 
 
         const [feed, setFeed] = useState<any[]>([]);
+        const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
 
         // Load Feed
         const { data, loading, refresh } = useAsync(async () => {
@@ -49,8 +58,8 @@ Devvit.addCustomPostType({
             return { posts };
         });
 
-        // Effect-like update
-        if (data && data.posts.length !== feed.length) {
+        // Effect-like update: always sync feed when data is available
+        if (data && data.posts) {
             setFeed(data.posts);
         }
 
@@ -89,10 +98,21 @@ Devvit.addCustomPostType({
             }
         };
 
+        const SUBMIT_COOLDOWN_MS = 30_000; // 30-second cooldown
+
         const onSubmit = async () => {
             if (!prompt) return;
+
+            const now = Date.now();
+            if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+                const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
+                setStatus(`Cooldown: wait ${remaining}s before submitting again.`);
+                return;
+            }
+
             setStatus('Queueing...');
             const jobId = await queue.enqueueJob(context.userId || 'anon', prompt);
+            setLastSubmitTime(Date.now());
             setStatus(`Queued! ID: ${jobId}`);
             setPrompt('');
             // Trigger background processing immediately if local dev or quick test
@@ -119,6 +139,8 @@ Devvit.addCustomPostType({
                     isLoading={lbLoading}
                     onRefresh={loadLeaderboard}
                     onClose={() => setShowLeaderboard(false)}
+                    scoreLabel="karma"
+                    currentUserId={context.userId}
                 />
             );
         }

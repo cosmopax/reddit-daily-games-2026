@@ -12,6 +12,7 @@ declare module 'react' {
             button: Devvit.Blocks.ButtonProps;
             image: Devvit.Blocks.ImageProps;
             icon: Devvit.Blocks.IconProps;
+            textfield: any;
         }
     }
 }

@@ -41,7 +41,8 @@ export class GameStrategyServer {
         });
 
         const lastTick = data['lastTick'] || Date.now();
-        let cash = data['cash'] || 0;
+        const isNewUser = !data['cash'] && !data['lastTick'];
+        let cash = data['cash'] || (isNewUser ? 1000 : 0);
         let advisors: ExecutiveAdvisor[] = [];
         if (data['advisors_json']) {
             try {
@@ -49,39 +50,28 @@ export class GameStrategyServer {
             } catch (e) { }
         }
 
-        // Lazy Evaluation: Apply pending income
+        // Lazy Evaluation: Apply pending income and persist
         const now = Date.now();
-        const elapsedHours = (now - lastTick) / 3600000;
-        if (elapsedHours > 0) {
+        const elapsedHours = (now - (lastTick as number)) / 3600000;
+        if (elapsedHours > 0 && hourlyIncome > 0) {
             const earned = hourlyIncome * elapsedHours;
             cash += earned;
-
-            // Auto-save logic could go here, but strictly we might wait for a user action 
-            // OR save if significant time passed. For "Robustness", we save on read to keep state fresh.
-            // However, saving on every read is heavy. We'll return the projected state,
-            // and only save when 'buyAsset' or specific 'sync' is called, OR if gap is large.
-            // For now, let's keep it pure query unless gap > 1 min
-            if (now - lastTick > 60000) {
-                // Update specific fields only to avoid race conditions? 
-                // RedisWrapper packs everything. We have to save all.
-                // We will defer save to actions to be safe, but return computed 'current' values.
-                // Actually, if we don't save, the user sees "Earned $X" but if they don't click buy, it's lost on next reload?
-                // Yes, we MUST save or at least return the updated state and let the client know.
-                // A better pattern: "claim" endpoint. 
-                // BUT "Get Rich Lazy" implies auto.
-                // Let's UPDATE the cache in memory (data object) basically conceptually,
-                // but for this function, just return calculated values.
-                // Real persistence happens on 'buy' or 'tick'.
-            }
         }
 
-        return {
+        const state: UserState = {
             cash,
-            lastTick: now, // We project forward to 'now'
+            lastTick: now,
             netWorth: cash + assetValue,
             assets: assets as Record<AssetType, number>,
             advisors
         };
+
+        // Persist accrued income so it's not lost on reload
+        if (elapsedHours > 0.001 || isNewUser) {
+            await this.saveUserState(userId, state);
+        }
+
+        return state;
     }
 
     async saveUserState(userId: string, state: UserState): Promise<void> {

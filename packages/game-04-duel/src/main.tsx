@@ -12,13 +12,6 @@ Devvit.configure({
 // App settings for API keys
 Devvit.addSettings([
     {
-        name: 'HUGGINGFACE_TOKEN',
-        label: 'Hugging Face API Token',
-        type: 'string',
-        isSecret: false,
-        scope: SettingScope.Installation,
-    },
-    {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
@@ -34,29 +27,23 @@ Devvit.addCustomPostType({
         const [userId] = useState(() => context.userId || 'test-user');
         const [move, setMove] = useState('');
 
-        const { data, loading, error } = useAsync<any>(async () => {
+        const { data: initialData, loading } = useAsync<any>(async () => {
             const state = await server.getDuelState(userId);
             return { state } as any;
         });
-
-        const state = data?.state;
+        const [localState, setLocalState] = useState<any>(null);
+        const state = localState?.state || initialData?.state;
 
         const onAttack = async () => {
             if (!move || !state) return;
-            // Optimistic update could happen here
-            await server.submitMove(userId, move);
+            const newState = await server.submitMove(userId, move);
+            setLocalState({ state: newState });
             setMove('');
-            // Trigger refresh
-            // In 0.11, simpler to just force re-render via state update or await the result
-            const newState = await server.getDuelState(userId);
-            // We lack a clean way to mutate 'data' from useAsync without re-triggering it.
-            // For now, we rely on standard re-render flow if we passed state down, 
-            // but useAsync holds it. We might need a local state copy.
         };
 
         const onReset = async () => {
-            await server.resetGame(userId);
-            // refresh();
+            const newState = await server.resetGame(userId);
+            setLocalState({ state: newState });
         };
 
         // Render the arena UI
@@ -84,6 +71,8 @@ Devvit.addCustomPostType({
                     isLoading={lbLoading}
                     onRefresh={loadLeaderboard}
                     onClose={() => setShowLeaderboard(false)}
+                    scoreLabel="wins"
+                    currentUserId={userId}
                 />
             );
         }
@@ -155,9 +144,27 @@ Devvit.addCustomPostType({
                     </vstack>
 
                     {state.gameOver && (
-                        <vstack padding="small" alignment="center middle">
-                            <text color={Theme.colors.gold} weight="bold" size="large">GAME OVER</text>
-                            <button appearance="bordered" onPress={onReset}>REBOOT SYSTEM</button>
+                        <vstack padding="small" alignment="center middle" gap="small">
+                            <text color={state.userHealth > 0 ? Theme.colors.success : Theme.colors.danger} weight="bold" size="large">
+                                {state.userHealth > 0 ? 'VICTORY!' : 'DEFEAT...'}
+                            </text>
+                            <hstack gap="small">
+                                <button appearance="bordered" onPress={onReset}>REBOOT SYSTEM</button>
+                                <button appearance="secondary" size="small" onPress={async () => {
+                                    try {
+                                        const postId = context.postId;
+                                        if (!postId) return;
+                                        const outcome = state.userHealth > 0 ? 'defeated' : 'was bested by';
+                                        await context.reddit.submitComment({
+                                            id: postId,
+                                            text: `I ${outcome} the Cyber-Valkyrie in AI Duel! Try to beat my score on the leaderboard.`
+                                        });
+                                        context.ui.showToast('Shared to comments!');
+                                    } catch (e) {
+                                        context.ui.showToast('Could not share - try again');
+                                    }
+                                }}>Share Result</button>
+                            </hstack>
                         </vstack>
                     )}
                 </vstack>

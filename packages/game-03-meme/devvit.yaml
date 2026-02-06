@@ -1,4 +1,5 @@
 name: meme-wars
 version: 0.0.1
+description: "AI-powered meme generator using Flux.1. Create, vote, and compete for Meme Lord status."
 scheduler:
   process_queue: '* * * * *'

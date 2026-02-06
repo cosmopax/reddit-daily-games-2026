@@ -1,7 +1,6 @@
 import type { Devvit } from '@devvit/public-api';
-import 'react';
 
-declare module 'react' {
+declare global {
     namespace JSX {
         interface IntrinsicElements {
             vstack: Devvit.Blocks.VStackProps;

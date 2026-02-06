@@ -110,6 +110,7 @@ Devvit.addCustomPostType({
 
         // Get Valkyrie profile for theming
         const valkyrie = getValkyrieProfile(state.opponentRole || '');
+        const opponentPortrait = state.opponentPortrait || valkyrie.portraitUrl;
 
         // ─── LEADERBOARD ───────────────
         if (screen === 'leaderboard') {
@@ -158,7 +159,7 @@ Devvit.addCustomPostType({
                         width="100%"
                     >
                         <image
-                            url={valkyrie.portraitUrl}
+                            url={opponentPortrait}
                             imageWidth={80}
                             imageHeight={80}
                             resizeMode="cover"
@@ -219,7 +220,7 @@ Devvit.addCustomPostType({
                                     <text color={Theme.colors.textDim} size="xsmall">{valkyrie.role}</text>
                                 </vstack>
                                 <image
-                                    url={valkyrie.portraitUrl}
+                                    url={opponentPortrait}
                                     imageWidth={32}
                                     imageHeight={32}
                                     resizeMode="cover"

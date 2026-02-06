@@ -21,6 +21,14 @@ export class GameStrategyServer {
         return `${USER_KEY_PREFIX}${userId}`;
     }
 
+    private getTodayChoiceKey(): string {
+        const now = new Date();
+        const yyyy = now.getUTCFullYear();
+        const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(now.getUTCDate()).padStart(2, '0');
+        return `daily_choices:${yyyy}-${mm}-${dd}`;
+    }
+
     async getUserState(userId: string): Promise<UserState> {
         // Rehydrate from Redis using our optimized wrapper
         const keys = ['cash', 'lastTick', 'advisors_json', ...Object.keys(ASSETS).map(id => `asset_${id}`)];
@@ -377,8 +385,8 @@ RULES for multiplierRange:
 
         await this.saveUserState(userId, state);
 
-        // Record choice for today
-        await this.context.redis.hSet('daily_choices', { [userId]: choice });
+        // Record choice for today (date-scoped to prevent permanent lockout)
+        await this.context.redis.hSet(this.getTodayChoiceKey(), { [userId]: choice });
 
         // Generate outcome narrative
         const gainOrLoss = cashAfter - cashBefore;
@@ -426,7 +434,7 @@ RULES for multiplierRange:
      * Check if user already made today's choice.
      */
     async hasChosenToday(userId: string): Promise<string | null> {
-        const choice = await this.context.redis.hGet('daily_choices', userId);
+        const choice = await this.context.redis.hGet(this.getTodayChoiceKey(), userId);
         return choice || null;
     }
 

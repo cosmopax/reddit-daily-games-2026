@@ -15,6 +15,21 @@
 
 ## 📝 Change Log (Reverse Chronological)
 
+### [2026-02-06 20:00] - P0 Stabilization + Handover Sync (Agent: Codex)
+- **Intent:** Implement the approved takeover plan's immediate P0/P1 items: fix gameplay correctness gaps, restore verification script compatibility, add canonical smoke command, and sync handover/docs to current code reality.
+- **Outcome:**
+  - Fixed date-scoped daily-choice tracking in `packages/game-01-strategy/src/server.ts` to prevent permanent "already chose today" lockout.
+  - Wired duel UI portrait rendering to persisted opponent portrait in `packages/game-04-duel/src/main.tsx`.
+  - Updated verification scripts to use `fetchDailyTrends(2)` in `scripts/verify_api_dryrun.ts` and `packages/shared/verify_local.ts`.
+  - Updated shared architecture doc method naming in `docs/ARCHITECTURE.md`.
+  - Added canonical cross-game smoke script `scripts/smoke_all_games.sh`.
+  - Added current-state handover artifact `CODEX_HANDOVER_3.md`.
+- **Commands:** `sed -n ...` inspections; `rg -n --glob '!**/node_modules/**' 'fetchDailyTrend\\('`; `bash scripts/smoke_all_games.sh`; `date '+%Y-%m-%d %H:%M'`; `chmod +x scripts/smoke_all_games.sh`.
+- **Tests:**
+  - `rg` check confirms no remaining `fetchDailyTrend(` references in tracked source/docs (excluding historical/import bundles).
+  - `bash scripts/smoke_all_games.sh` executed and **failed** at shared typecheck with pre-existing JSX/type alignment issues (captured in output).
+- **Git/Worktree:** Uncommitted local changes in current checkout (`main`).
+
 ### [2026-02-04 11:03] - AGENTS Workflow Refresh (Agent: Codex)
 - **Intent:** Update AGENTS.md with newly verified repo workflows/commands only.
 - **Outcome:** Added a compact "Newly confirmed workflows/commands" section in `AGENTS.md`.

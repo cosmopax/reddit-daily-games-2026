@@ -20,7 +20,7 @@ This is the heart of the monorepo.
 *   **Purpose**: Centralize all HTTP traffic.
 *   **Reason**: Easier to audit, mock, and manage API keys (Secrets).
 *   **Methods**:
-    *   `fetchDailyTrend()` -> Google Trends
+    *   `fetchDailyTrends()` -> Google Trends
     *   `generateImage()` -> Flux.1
     *   `generateAiMove()` -> Gemini 2.0
 

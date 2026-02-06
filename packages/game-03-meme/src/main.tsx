@@ -33,6 +33,24 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create Meme Wars Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const sub = await context.reddit.getCurrentSubreddit();
+        await context.reddit.submitPost({
+            title: '🎨 Meme Wars — AI-Powered Meme Battle Arena!',
+            subredditName: sub.name,
+            preview: (
+                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading Meme Wars...</text>
+                </vstack>
+            ),
+        });
+        context.ui.showToast('Game post created!');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'Meme Wars',
     render: (context) => {

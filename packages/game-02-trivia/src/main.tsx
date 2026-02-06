@@ -41,6 +41,24 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create Hive Mind Gauntlet Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const sub = await context.reddit.getCurrentSubreddit();
+        await context.reddit.submitPost({
+            title: '🧠 Hive Mind Gauntlet — Which Topic Trends Higher?',
+            subredditName: sub.name,
+            preview: (
+                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading Hive Mind Gauntlet...</text>
+                </vstack>
+            ),
+        });
+        context.ui.showToast('Game post created!');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
     render: (context) => {

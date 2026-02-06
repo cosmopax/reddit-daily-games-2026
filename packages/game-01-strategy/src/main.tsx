@@ -20,6 +20,24 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create Get Rich Fast Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const sub = await context.reddit.getCurrentSubreddit();
+        await context.reddit.submitPost({
+            title: '💰 Get Rich Fast — Build Your Passive Income Empire!',
+            subredditName: sub.name,
+            preview: (
+                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading Get Rich Fast...</text>
+                </vstack>
+            ),
+        });
+        context.ui.showToast('Game post created!');
+    },
+});
+
 Devvit.addSchedulerJob({
     name: 'hourly_tick',
     onRun: async (event, context) => {

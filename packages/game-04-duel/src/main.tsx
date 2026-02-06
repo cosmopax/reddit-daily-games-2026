@@ -20,6 +20,24 @@ Devvit.addSettings([
     },
 ]);
 
+Devvit.addMenuItem({
+    label: 'Create AI Duel Post',
+    location: 'subreddit',
+    onPress: async (_event, context) => {
+        const sub = await context.reddit.getCurrentSubreddit();
+        await context.reddit.submitPost({
+            title: '⚔️ AI Duel — Outsmart the Cyber-Valkyrie!',
+            subredditName: sub.name,
+            preview: (
+                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading AI Duel...</text>
+                </vstack>
+            ),
+        });
+        context.ui.showToast('Game post created!');
+    },
+});
+
 Devvit.addCustomPostType({
     name: 'AI Duel',
     render: (context) => {

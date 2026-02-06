@@ -1,5 +1,5 @@
 import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
-import { Theme, ServiceProxy, Leaderboard, LeaderboardUI } from 'shared';
+import { Theme, ServiceProxy, Leaderboard, LeaderboardUI, NarrativeHeader, HIVE_BRAIN, CharacterPanel } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({
@@ -47,11 +47,12 @@ Devvit.addMenuItem({
     onPress: async (_event, context) => {
         const sub = await context.reddit.getCurrentSubreddit();
         await context.reddit.submitPost({
-            title: '🧠 Hive Mind Gauntlet — Which Topic Trends Higher?',
+            title: '🧠 Hive Mind Gauntlet — Sync With the Collective!',
             subredditName: sub.name,
             preview: (
                 <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading Hive Mind Gauntlet...</text>
+                    <text color={Theme.colors.primary} size="xlarge" weight="bold">NEURAL SYNC INITIALIZING...</text>
+                    <text color={Theme.colors.textDim} size="small">Connecting to the Hive...</text>
                 </vstack>
             ),
         });
@@ -108,21 +109,20 @@ Devvit.addCustomPostType({
                 stats.streak += 1;
                 stats.totalWins += 1;
                 if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
-                context.ui.showToast(`Correct! Streak: ${stats.streak}`);
+                context.ui.showToast(`Neural Sync successful! Streak: ${stats.streak}`);
 
                 // Share to comment on streak milestones
                 if (stats.streak >= 3 && context.postId) {
                     try {
                         await context.reddit.submitComment({
                             id: context.postId,
-                            text: `I'm on a ${stats.streak}-day streak in Hive Mind Gauntlet! (${stats.totalWins} total wins) Can you beat it?`
+                            text: `🧠 My neural sync streak is at ${stats.streak}! (${stats.totalWins} total syncs) Can you beat it?`
                         });
                     } catch (e) { /* Comment sharing is optional */ }
                 }
 
                 // Submit to Leaderboard (Total Wins)
                 const lb = new Leaderboard(context, 'game2_trivia');
-                // Get username safely
                 let username = 'Hive Mind Node';
                 try {
                     const u = await context.reddit.getUserById(userId);
@@ -132,13 +132,21 @@ Devvit.addCustomPostType({
 
             } else {
                 stats.streak = 0; // Reset streak
-                context.ui.showToast("Wrong! Streak Reset.");
+                context.ui.showToast("Neural Desync! Streak Reset.");
             }
 
             await context.redis.set(statsKey, JSON.stringify(stats));
         };
 
-        if (loading || !data) return <vstack alignment="center middle"><text>Loading Trends...</text></vstack>;
+        if (loading || !data) {
+            return (
+                <vstack alignment="center middle" height="100%" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.primary} size="large" weight="bold">HYPER HIVE MIND</text>
+                    <spacer size="small" />
+                    <text color={Theme.colors.textDim} size="small">Intercepting signals...</text>
+                </vstack>
+            );
+        }
 
         const { trends: currentTrends, played } = data;
         const showResult = played || result; // If previously played or just played
@@ -163,7 +171,7 @@ Devvit.addCustomPostType({
                     isLoading={lbLoading}
                     onRefresh={loadLeaderboard}
                     onClose={() => setShowLeaderboard(false)}
-                    scoreLabel="wins"
+                    scoreLabel="syncs"
                     currentUserId={userId}
                 />
             );
@@ -172,32 +180,37 @@ Devvit.addCustomPostType({
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background}>
                 {/* Header */}
-                <vstack alignment="center middle" padding="medium" backgroundColor={Theme.colors.surface}>
-                    <hstack alignment="space-between middle" width="100%">
-                        <spacer />
-                        <vstack alignment="center middle">
-                            <text style="heading" size="xlarge" color={Theme.colors.primary} weight="bold">HYPER HIVE MIND</text>
-                            <text size="small" color={Theme.colors.textDim}>Daily Trend Check</text>
-                        </vstack>
-                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
-                    </hstack>
-                </vstack>
+                <NarrativeHeader
+                    title="HYPER HIVE MIND"
+                    subtitle="Daily Neural Sync"
+                    accentColor={HIVE_BRAIN.accentColor}
+                    onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
+                />
+
+                {/* Hive Brain Intro */}
+                <CharacterPanel
+                    character={HIVE_BRAIN}
+                    dialogue={showResult ? 'Signal processed. Results decoded.' : 'SIGNAL INTERCEPTED. Two trends detected. Which burns brighter in the collective consciousness?'}
+                    compact={true}
+                />
 
                 {/* Split Screen Battle */}
                 <hstack grow alignment="center middle">
                     {/* Option A (Baseline) */}
-                    <vstack grow height="100%" alignment="center middle" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight}>
-                        <text size="large" weight="bold" color={Theme.colors.text}>{currentTrends.a.query}</text>
+                    <vstack grow height="100%" alignment="center middle" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight} padding="small">
+                        <text size="small" color={Theme.colors.textDim}>SIGNAL A</text>
+                        <text size="large" weight="bold" color={Theme.colors.text} wrap alignment="center">{currentTrends.a.query}</text>
                         <text size="xlarge" weight="bold" color={Theme.colors.gold}>{currentTrends.a.trafficDisplay}</text>
-                        <text size="small" color={Theme.colors.textDim}>Searches</text>
+                        <text size="small" color={Theme.colors.textDim}>searches</text>
                     </vstack>
 
                     {/* VS Separator */}
-                    <vstack width="1px" height="80%" backgroundColor={Theme.colors.textDim} />
+                    <vstack width="2px" height="80%" backgroundColor={HIVE_BRAIN.accentColor} />
 
                     {/* Option B (The Guess) */}
-                    <vstack grow height="100%" alignment="center middle" backgroundColor={Theme.colors.background}>
-                        <text size="large" weight="bold" color={Theme.colors.text}>{currentTrends.b.query}</text>
+                    <vstack grow height="100%" alignment="center middle" backgroundColor={Theme.colors.background} padding="small">
+                        <text size="small" color={Theme.colors.textDim}>SIGNAL B</text>
+                        <text size="large" weight="bold" color={Theme.colors.text} wrap alignment="center">{currentTrends.b.query}</text>
 
                         {showResult ? (
                             <vstack alignment="center middle" gap="small">
@@ -207,21 +220,21 @@ Devvit.addCustomPostType({
                                     : result === 'wrong' ? Theme.colors.danger
                                     : Theme.colors.textDim
                                 }>{
-                                    data.played && !result ? 'PLAYED TODAY'
-                                    : result === 'correct' ? 'CORRECT!'
-                                    : result === 'wrong'   ? 'WRONG!'
+                                    data.played && !result ? '🔄 SYNCED TODAY'
+                                    : result === 'correct' ? '✅ NEURAL SYNC!'
+                                    : result === 'wrong'   ? '❌ DESYNC!'
                                     : 'DONE'
                                 }</text>
                                 <spacer size="small" />
-                                <text size="small" color={Theme.colors.secondary}>🔥 Streak: {data.stats?.streak || 0}</text>
-                                <text size="small" color={Theme.colors.textDim}>Wins: {data.stats?.totalWins || 0} | Best: {data.stats?.maxStreak || 0}</text>
-                                <text size="small" color={Theme.colors.textDim}>Come back tomorrow!</text>
+                                <text size="small" color={HIVE_BRAIN.accentColor}>🔥 Streak: {data.stats?.streak || 0}</text>
+                                <text size="small" color={Theme.colors.textDim}>Syncs: {data.stats?.totalWins || 0} | Best: {data.stats?.maxStreak || 0}</text>
+                                <text size="small" color={Theme.colors.textDim}>Next signal: tomorrow</text>
                             </vstack>
                         ) : (
-                            <vstack gap="medium">
-                                <text size="small" color={Theme.colors.textDim}>VS {currentTrends.a.query}?</text>
-                                <button appearance="primary" onPress={() => onGuess('higher')}>HIGHER ▲</button>
-                                <button appearance="secondary" onPress={() => onGuess('lower')}>LOWER ▼</button>
+                            <vstack gap="medium" alignment="center middle">
+                                <text size="small" color={Theme.colors.textDim}>vs {currentTrends.a.query}?</text>
+                                <button appearance="primary" onPress={() => onGuess('higher')}>📈 HIGHER</button>
+                                <button appearance="secondary" onPress={() => onGuess('lower')}>📉 LOWER</button>
                             </vstack>
                         )}
                     </vstack>

@@ -1,6 +1,7 @@
 import { Context, JobContext } from '@devvit/public-api';
 import { RedisWrapper, DailyScheduler, ServiceProxy, Leaderboard } from 'shared';
-import { ASSETS, AssetType, UserState, ExecutiveAdvisor } from './types';
+import { ASSETS, AssetType, UserState, ExecutiveAdvisor, DailyScenario, DailyChoiceResult } from './types';
+import { getRandomScenario } from './fallbackScenarios';
 
 const USER_KEY_PREFIX = 'user:v1:';
 
@@ -218,6 +219,217 @@ export class GameStrategyServer {
         });
         await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
     }
+    // ═══════════════════════════════════════════
+    // DAILY SCENARIO — The Vic/Sal Choice System
+    // ═══════════════════════════════════════════
+
+    /**
+     * Get today's scenario. Tries Redis cache → Gemini generation → fallback.
+     */
+    async getDailyScenario(): Promise<DailyScenario> {
+        // Check Redis for cached scenario
+        const cached = await this.context.redis.get('daily_scenario');
+        if (cached) {
+            try {
+                return JSON.parse(cached) as DailyScenario;
+            } catch (e) { /* corrupted, regenerate */ }
+        }
+
+        // Try Gemini generation
+        const generated = await this.generateDailyScenario();
+        if (generated) {
+            // Cache with ~25 hour TTL (in ms for redis expiry)
+            await this.context.redis.set('daily_scenario', JSON.stringify(generated));
+            // Set expiration (25 hours)
+            try {
+                await (this.context.redis as any).expire('daily_scenario', 90000);
+            } catch (e) { /* expire not available, scenario persists until overwritten */ }
+            return generated;
+        }
+
+        // Fallback to pre-written scenarios
+        const recentIds: string[] = [];
+        try {
+            const recentRaw = await this.context.redis.get('recent_scenario_ids');
+            if (recentRaw) recentIds.push(...JSON.parse(recentRaw));
+        } catch (e) { }
+
+        const fallback = getRandomScenario(recentIds);
+
+        // Track used scenario IDs (keep last 5)
+        const updatedIds = [...recentIds, fallback.id].slice(-5);
+        await this.context.redis.set('recent_scenario_ids', JSON.stringify(updatedIds));
+        await this.context.redis.set('daily_scenario', JSON.stringify(fallback));
+
+        return fallback;
+    }
+
+    /**
+     * Generate a Vic/Sal scenario via Gemini.
+     * Returns null on failure (caller falls back to pre-written scenarios).
+     */
+    private async generateDailyScenario(): Promise<DailyScenario | null> {
+        const proxy = new ServiceProxy(this.context);
+        const apiKey = await (async () => {
+            try {
+                const val = await (this.context.settings as any)?.get('GEMINI_API_KEY');
+                return val as string | undefined;
+            } catch (e) { return undefined; }
+        })();
+
+        if (!apiKey) return null;
+
+        const concepts = [
+            'Short Selling', 'Compound Interest', 'Diversification', 'Dollar-Cost Averaging',
+            'Margin Trading', 'Options Trading', 'Real Estate Investment', 'Passive Income',
+            'Inflation Hedging', 'Emergency Fund', 'Venture Capital', 'Market Cycles',
+            'Bond Markets', 'ETFs vs Individual Stocks', 'Tax-Loss Harvesting',
+        ];
+        const concept = concepts[Math.floor(Math.random() * concepts.length)];
+
+        const prompt = `You are a creative writer for a financial education game called "Get Rich Lazy".
+The aesthetic is SEINEN NOIR — think noir manga meets Wall Street meets The Wire.
+Two advisors give competing advice on a daily market event:
+
+VIC: Young, reckless, WSB energy. Talks in internet slang, emoji, all-caps hype. High risk, high reward.
+SAL: Old-school, street-wise, Wire-style dialogue. Calm, measured, conservative but sharp.
+
+Today's financial concept: "${concept}"
+
+Create a daily scenario. Reply with ONLY valid JSON (no markdown):
+{
+  "id": "gen_${Date.now()}",
+  "headline": "DRAMATIC ALL-CAPS HEADLINE (max 8 words)",
+  "narrative": "2-3 sentence noir-style scene setter (max 200 chars)",
+  "financialConcept": "${concept}",
+  "illegalAnalogy": "Explain ${concept} using a criminal/street metaphor (2-3 sentences, max 250 chars)",
+  "vic": {
+    "dialogue": "Vic's advice in character (2-3 sentences, max 200 chars)",
+    "action": "What following Vic does (1 sentence, max 60 chars)",
+    "multiplierRange": [low, high]
+  },
+  "sal": {
+    "dialogue": "Sal's advice in character (2-3 sentences, max 200 chars)",
+    "action": "What following Sal does (1 sentence, max 60 chars)",
+    "multiplierRange": [low, high]
+  }
+}
+
+RULES for multiplierRange:
+- Vic: wide range like [0.2, 4.0] — high risk
+- Sal: narrow range like [0.9, 1.3] — low risk
+- Both can lose money, but Vic's floor is lower and ceiling higher`;
+
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            if (response.ok) {
+                const data: any = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(cleanJson) as DailyScenario;
+                    // Validate structure
+                    if (parsed.headline && parsed.vic?.dialogue && parsed.sal?.dialogue) {
+                        return parsed;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[generateDailyScenario] Gemini error:', e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Process a user's daily Vic/Sal choice.
+     * Applies the multiplier, records the choice, syncs leaderboard.
+     */
+    async processDailyChoice(userId: string, choice: 'vic' | 'sal'): Promise<DailyChoiceResult> {
+        const state = await this.getUserState(userId);
+        const scenario = await this.getDailyScenario();
+
+        const advice = choice === 'vic' ? scenario.vic : scenario.sal;
+        const [min, max] = advice.multiplierRange;
+        const multiplier = min + Math.random() * (max - min);
+
+        const cashBefore = state.cash;
+        const cashAfter = Math.max(10, Math.floor(state.cash * multiplier)); // Never go below 10
+
+        state.cash = cashAfter;
+        state.lastTick = Date.now();
+
+        // Recalculate net worth
+        let assetValue = 0;
+        Object.keys(ASSETS).forEach(id => {
+            const count = state.assets[id as AssetType] || 0;
+            assetValue += count * ASSETS[id as AssetType].cost;
+        });
+        state.netWorth = state.cash + assetValue;
+
+        await this.saveUserState(userId, state);
+
+        // Record choice for today
+        await this.context.redis.hSet('daily_choices', { [userId]: choice });
+
+        // Generate outcome narrative
+        const gainOrLoss = cashAfter - cashBefore;
+        const pct = Math.round((multiplier - 1) * 100);
+        let narrative: string;
+        if (multiplier >= 2.0) {
+            narrative = choice === 'vic'
+                ? `VIC WAS RIGHT! Massive gains! Cash went ${pct > 0 ? '+' : ''}${pct}%. 🚀`
+                : `SAL's patience PAID OFF BIG. Cash ${pct > 0 ? '+' : ''}${pct}%. Slow money IS smart money.`;
+        } else if (multiplier >= 1.0) {
+            narrative = choice === 'vic'
+                ? `Vic's play worked. Cash up ${pct}%. Not bad for a degen move.`
+                : `Sal's wisdom holds. Cash up ${pct}%. Steady hands, steady gains.`;
+        } else if (multiplier >= 0.5) {
+            narrative = choice === 'vic'
+                ? `Vic's gamble didn't quite land. Cash down ${Math.abs(pct)}%. The market humbles everyone.`
+                : `Even Sal's caution couldn't dodge this one. Cash down ${Math.abs(pct)}%.`;
+        } else {
+            narrative = choice === 'vic'
+                ? `VIC LED YOU OFF A CLIFF. Cash obliterated — down ${Math.abs(pct)}%. Fortune did NOT favor the degen today.`
+                : `A rare Sal miss. Cash dropped ${Math.abs(pct)}%. Even the wise take hits.`;
+        }
+
+        // Sync leaderboard
+        try {
+            const lb = new Leaderboard(this.context, 'game1_strategy');
+            let username = 'Unknown CEO';
+            try {
+                const user = await this.context.reddit.getUserById(userId);
+                if (user) username = user.username;
+            } catch (e) { }
+            await lb.submitScore(userId, username, state.netWorth);
+        } catch (e) { }
+
+        return {
+            choice,
+            multiplier,
+            cashBefore,
+            cashAfter,
+            narrative,
+        };
+    }
+
+    /**
+     * Check if user already made today's choice.
+     */
+    async hasChosenToday(userId: string): Promise<string | null> {
+        const choice = await this.context.redis.hGet('daily_choices', userId);
+        return choice || null;
+    }
+
     async getLeaderboard() {
         const lb = new Leaderboard(this.context, 'game1_strategy');
         return lb.getTop(10);

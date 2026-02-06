@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, useForm, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
-import { Theme, Leaderboard, LeaderboardUI } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, MEME_LORD, CharacterPanel } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({
@@ -39,11 +39,12 @@ Devvit.addMenuItem({
     onPress: async (_event, context) => {
         const sub = await context.reddit.getCurrentSubreddit();
         await context.reddit.submitPost({
-            title: '🎨 Meme Wars — AI-Powered Meme Battle Arena!',
+            title: '🎨 Meme Wars — Enter the AI Meme Arena!',
             subredditName: sub.name,
             preview: (
                 <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.accent} size="xlarge" weight="bold">Loading Meme Wars...</text>
+                    <text color={Theme.narrative.goldHighlight} size="xlarge" weight="bold">MEME ARENA LOADING...</text>
+                    <text color={Theme.colors.textDim} size="small">Preparing the battleground...</text>
                 </vstack>
             ),
         });
@@ -55,85 +56,68 @@ Devvit.addCustomPostType({
     name: 'Meme Wars',
     height: 'tall',
     render: (context) => {
-        const [status, setStatus] = useState<string>('Idle');
+        const [status, setStatus] = useState<string>('Ready to create');
         const queue = new MemeQueue(context);
 
         const [feed, setFeed] = useState<any[]>([]);
         const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
 
-        const SUBMIT_COOLDOWN_MS = 30_000; // 30-second cooldown
+        const SUBMIT_COOLDOWN_MS = 30_000;
 
         const promptForm = useForm(
             {
-                fields: [{ type: 'string' as const, name: 'prompt', label: 'Meme Prompt', placeholder: 'A cyberpunk cat ruling Wall Street...' }],
-                title: 'Create Meme',
-                acceptLabel: 'Generate!'
+                fields: [{ type: 'string' as const, name: 'prompt', label: 'Meme Concept', placeholder: 'A cyberpunk cat ruling Wall Street...' }],
+                title: '⚔️ Forge Your Meme',
+                acceptLabel: 'ENTER THE ARENA!'
             },
             async (values) => {
                 if (!values.prompt) return;
                 const now = Date.now();
                 if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
                     const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
-                    setStatus(`Cooldown: wait ${remaining}s before submitting again.`);
+                    setStatus(`Cooldown: ${remaining}s before next creation`);
                     return;
                 }
-                setStatus('Generating your meme...');
+                setStatus('⚡ Forging your meme...');
                 const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
                 setLastSubmitTime(Date.now());
-                setStatus('Queued! Tap "Refresh" in ~30s to see your meme.');
+                setStatus('🗡️ Your creation enters the arena! Tap Refresh in ~30s.');
             }
         );
 
         // Load Feed
         const { data, loading, refresh } = useAsync(async () => {
-            // Get top 10 from leaderboard (highest score)
-            // Use zRange with byRank? Devvit 0.11 syntax:
-            // zRange(key, min, max, { by: 'rank', reverse: true })
             const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
-
             if (!ids || ids.length === 0) return { posts: [] };
-
             const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
             const posts = postsRaw.filter(p => !!p).map(p => JSON.parse(p!));
             return { posts };
         });
 
-        // Effect-like update: always sync feed when data is available
         if (data && data.posts) {
             setFeed(data.posts);
         }
 
         const onVote = async (memeId: string, delta: number) => {
-            // Optimistic Update
             const newFeed = feed.map(p => {
                 if (p.id === memeId) return { ...p, votes: (p.votes || 0) + delta };
                 return p;
             });
             setFeed(newFeed);
 
-            // 1. Update Meme Score (Local Content Leaderboard)
             await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
 
-            // 2. Credit Author (Global User Leaderboard)
             const targetMeme = feed.find(p => p.id === memeId);
             if (targetMeme?.userId) {
                 const authorId = targetMeme.userId;
-
-                // Increment Author's Cumulative Score
-                // We use a separate key for tracking total meme karma
                 const authorScoreKey = `user:${authorId}:meme_score`;
                 const newScore = await context.redis.incrBy(authorScoreKey, delta);
-
-                // Submit to Global Leaderboard
                 const lb = new Leaderboard(context, 'game3_meme');
                 let username = 'Meme Artist';
                 try {
-                    // Try to get username if possible, or maybe we should have stored it in MemePost?
-                    // Fetching here is fine for now.
                     const u = await context.reddit.getUserById(authorId);
                     if (u) username = u.username;
                 } catch (e) { }
-
                 await lb.submitScore(authorId, username, newScore);
             }
         };
@@ -165,62 +149,74 @@ Devvit.addCustomPostType({
         }
 
         return (
-            <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium">
+            <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="small">
                 {/* Header */}
-                <vstack alignment="center middle" padding="medium">
-                    <hstack alignment="space-between middle" width="100%">
-                        <spacer />
-                        <vstack alignment="center middle">
-                            <text style="heading" color={Theme.colors.primary} size="xxlarge" weight="bold">MEME WARS</text>
-                            <text color={Theme.colors.textDim}>Flux.1 AI Meme Generator</text>
-                        </vstack>
-                        <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Top Artists</button>
-                    </hstack>
-                </vstack>
+                <NarrativeHeader
+                    title="MEME WARS"
+                    subtitle="AI Meme Arena"
+                    accentColor={MEME_LORD.accentColor}
+                    onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
+                    leaderboardLabel="👑 Lords"
+                />
 
-                <spacer size="medium" />
+                {/* Arena Master */}
+                <CharacterPanel
+                    character={MEME_LORD}
+                    dialogue="The crowd awaits. Forge your creation and let them judge."
+                    compact={true}
+                />
 
-                {/* Input Area */}
-                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight}>
+                {/* Create Section */}
+                <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={MEME_LORD.accentColor}>
                     <hstack alignment="space-between middle">
-                        <text color={Theme.colors.text} weight="bold">Create New Meme</text>
-                        <button onPress={() => context.ui.showForm(promptForm)} appearance="primary" size="small">Generate Meme</button>
+                        <vstack>
+                            <text color={Theme.colors.text} weight="bold" size="small">⚔️ Enter the Arena</text>
+                            <text color={Theme.colors.textDim} size="xsmall">{status}</text>
+                        </vstack>
+                        <button onPress={() => context.ui.showForm(promptForm)} appearance="primary" size="small">Create Meme</button>
                     </hstack>
-                    <spacer size="small" />
-                    <text color={Theme.colors.secondary} size="small">{status}</text>
                 </vstack>
 
-                <spacer size="medium" />
+                <spacer size="small" />
 
                 {/* Gallery Feed */}
-                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} grow>
+                <vstack cornerRadius="small" backgroundColor={Theme.colors.surface} grow padding="small">
                     <hstack alignment="space-between middle">
-                        <text color={Theme.colors.gold} weight="bold">🔥 Leaderboard</text>
-                        <button appearance="plain" size="small" onPress={() => refresh()}>🔄 Refresh</button>
+                        <text color={Theme.narrative.goldHighlight} weight="bold" size="small">🏆 ARENA COMBATANTS</text>
+                        <button appearance="plain" size="small" onPress={() => refresh()}>🔄</button>
                     </hstack>
                     <spacer size="small" />
 
-                    {/* Feed Items */}
                     {(feed && feed.length > 0) ? (
-                        feed.slice(0, 6).map((meme) => (
-                            <vstack key={meme.id} backgroundColor={Theme.colors.background} padding="small" cornerRadius="small" border="thin" borderColor={Theme.colors.surfaceHighlight} alignment="center middle" gap="small">
-                                <image url={meme.url || "https://placeholder.com/meme.png"} imageHeight={128} imageWidth={128} resizeMode="cover" />
-                                <text size="small" color={Theme.colors.text} wrap>{meme.prompt}</text>
-                                <hstack alignment="center middle" gap="medium">
+                        feed.slice(0, 4).map((meme) => (
+                            <hstack
+                                key={meme.id}
+                                backgroundColor={Theme.colors.background}
+                                padding="small"
+                                cornerRadius="small"
+                                border="thin"
+                                borderColor={Theme.colors.surfaceHighlight}
+                                alignment="center middle"
+                                gap="small"
+                            >
+                                <image url={meme.url || "https://placehold.co/64x64/1A1A1B/FF4500?text=MEME"} imageHeight={64} imageWidth={64} resizeMode="cover" />
+                                <vstack grow>
+                                    <text size="small" color={Theme.colors.text} wrap>{meme.prompt}</text>
+                                </vstack>
+                                <vstack alignment="center middle" gap="small">
                                     <button appearance="plain" size="small" onPress={() => onVote(meme.id, 1)}>⬆️</button>
-                                    <text color={Theme.colors.gold} weight="bold">{meme.votes || 0}</text>
+                                    <text color={Theme.narrative.goldHighlight} weight="bold" size="small">{meme.votes || 0}</text>
                                     <button appearance="plain" size="small" onPress={() => onVote(meme.id, -1)}>⬇️</button>
-                                </hstack>
-                            </vstack>
+                                </vstack>
+                            </hstack>
                         ))
                     ) : (
                         <vstack alignment="center middle" grow>
-                            <text color={Theme.colors.textDim}>No memes yet. Be the first!</text>
+                            <text color={Theme.colors.textDim} size="small">The arena is empty. Be the first to enter!</text>
                         </vstack>
                     )}
                 </vstack>
 
-                {/* Brand Footer */}
                 <hstack alignment="center middle" padding="small">
                     <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
                 </hstack>

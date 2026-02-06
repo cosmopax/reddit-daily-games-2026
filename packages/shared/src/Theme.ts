@@ -40,4 +40,26 @@ export const Theme = {
         meme: { accent: '#FF8717', accentDim: '#CC6B12' },      // Orange for creativity
         duel: { accent: '#EA0027', accentDim: '#B8001F' },      // Red for combat
     },
+
+    // Narrative layer — manga/graphic novel aesthetic
+    narrative: {
+        newspaper: { bg: '#FFFFF0', text: '#0A0A0A', border: '#333333' },
+        speechBubble: { bg: '#272729', border: '#818384' },
+        vicAccent: '#EA0027',
+        salAccent: '#46D160',
+        goldHighlight: '#D4AF37',
+        terminalGreen: '#00FF41',
+        dangerRed: '#FF3333',
+        noir: '#0A0A0A',
+    },
+
+    // Character accent palette
+    characters: {
+        vic: { color: '#EA0027', bg: '#1A0000' },
+        sal: { color: '#46D160', bg: '#001A00' },
+        bladeDancer: { color: '#9400D3', bg: '#0D001A' },
+        neuralWitch: { color: '#6A0DAD', bg: '#0A001A' },
+        chromeAssassin: { color: '#EA0027', bg: '#1A0000' },
+        voidSiren: { color: '#0079D3', bg: '#00001A' },
+    },
 };

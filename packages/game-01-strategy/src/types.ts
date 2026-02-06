@@ -30,3 +30,31 @@ export interface ExecutiveAdvisor {
     multiplier: number; // 1.1 = +10%
     portraitUrl: string;
 }
+
+// ═══════════════════════════════════════════
+// DAILY SCENARIO — The Vic/Sal Choice System
+// ═══════════════════════════════════════════
+
+export interface DailyScenario {
+    id: string;
+    headline: string;              // "FED RAISES RATES TO 15%"
+    narrative: string;             // Noir setup paragraph
+    financialConcept: string;      // "Short Selling"
+    illegalAnalogy: string;        // Criminal metaphor explanation
+    vic: AdvisorAdvice;
+    sal: AdvisorAdvice;
+}
+
+export interface AdvisorAdvice {
+    dialogue: string;              // In-character speech
+    action: string;                // What the choice does ("Go all-in on tech stocks")
+    multiplierRange: [number, number]; // [min, max] multiplier applied to cash
+}
+
+export interface DailyChoiceResult {
+    choice: 'vic' | 'sal';
+    multiplier: number;
+    cashBefore: number;
+    cashAfter: number;
+    narrative: string;             // Outcome description
+}

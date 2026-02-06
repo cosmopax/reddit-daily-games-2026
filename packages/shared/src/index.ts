@@ -3,4 +3,7 @@ export * from './DailyScheduler';
 export * from './ServiceProxy';
 export * from './Theme';
 export * from './Leaderboard';
+export * from './CharacterAssets';
 export * from './components/LeaderboardUI';
+export * from './components/CharacterPanel';
+export * from './components/NarrativeHeader';

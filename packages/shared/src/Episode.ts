@@ -77,9 +77,8 @@ async function readSetting(context: Context, key: string): Promise<string | unde
 }
 
 function looksLikeDefaultFallback(signals: TrendResult[]): boolean {
-  const set = new Set(signals.map((s) => s.query));
   const defaults = ['Minecraft', 'Fortnite', 'Retro Gaming', 'AI Coding'];
-  return defaults.every((q) => set.has(q));
+  return signals.length === 2 && signals.every((s) => defaults.includes(s.query));
 }
 
 function curatedSignalsForEpisode(id: string): TrendResult[] {

@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import { Devvit, useState, useAsync, useForm, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 import { MemeQueue } from './MemeQueue';
@@ -53,14 +53,36 @@ Devvit.addMenuItem({
 
 Devvit.addCustomPostType({
     name: 'Meme Wars',
+    height: 'tall',
     render: (context) => {
-        const [prompt, setPrompt] = useState('');
         const [status, setStatus] = useState<string>('Idle');
         const queue = new MemeQueue(context);
 
-
         const [feed, setFeed] = useState<any[]>([]);
         const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
+
+        const SUBMIT_COOLDOWN_MS = 30_000; // 30-second cooldown
+
+        const promptForm = useForm(
+            {
+                fields: [{ type: 'string' as const, name: 'prompt', label: 'Meme Prompt', placeholder: 'A cyberpunk cat ruling Wall Street...' }],
+                title: 'Create Meme',
+                acceptLabel: 'Generate!'
+            },
+            async (values) => {
+                if (!values.prompt) return;
+                const now = Date.now();
+                if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+                    const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
+                    setStatus(`Cooldown: wait ${remaining}s before submitting again.`);
+                    return;
+                }
+                setStatus('Generating your meme...');
+                const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
+                setLastSubmitTime(Date.now());
+                setStatus('Queued! Tap "Refresh" in ~30s to see your meme.');
+            }
+        );
 
         // Load Feed
         const { data, loading, refresh } = useAsync(async () => {
@@ -116,27 +138,6 @@ Devvit.addCustomPostType({
             }
         };
 
-        const SUBMIT_COOLDOWN_MS = 30_000; // 30-second cooldown
-
-        const onSubmit = async () => {
-            if (!prompt) return;
-
-            const now = Date.now();
-            if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
-                const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
-                setStatus(`Cooldown: wait ${remaining}s before submitting again.`);
-                return;
-            }
-
-            setStatus('Queueing...');
-            const jobId = await queue.enqueueJob(context.userId || 'anon', prompt);
-            setLastSubmitTime(Date.now());
-            setStatus(`Queued! ID: ${jobId}`);
-            setPrompt('');
-            // Trigger background processing immediately if local dev or quick test
-            // (In prod, scheduler picks it up)
-        };
-
         const [showLeaderboard, setShowLeaderboard] = useState(false);
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
         const [lbLoading, setLbLoading] = useState(false);
@@ -181,12 +182,11 @@ Devvit.addCustomPostType({
 
                 {/* Input Area */}
                 <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.surfaceHighlight}>
-                    <text color={Theme.colors.text} weight="bold">Create New Meme</text>
-                    <spacer size="small" />
-                    <hstack>
-                        <textfield placeholder="A cyberpunk cat..." onChange={(v) => setPrompt(v)} />
-                        <button onPress={onSubmit} appearance="primary">Generate</button>
+                    <hstack alignment="space-between middle">
+                        <text color={Theme.colors.text} weight="bold">Create New Meme</text>
+                        <button onPress={() => context.ui.showForm(promptForm)} appearance="primary" size="small">Generate Meme</button>
                     </hstack>
+                    <spacer size="small" />
                     <text color={Theme.colors.secondary} size="small">{status}</text>
                 </vstack>
 
@@ -200,11 +200,11 @@ Devvit.addCustomPostType({
                     </hstack>
                     <spacer size="small" />
 
-                    {/* Feed Items (Limit to top 3 for space?) */}
+                    {/* Feed Items */}
                     {(feed && feed.length > 0) ? (
-                        feed.slice(0, 3).map((meme) => (
+                        feed.slice(0, 6).map((meme) => (
                             <vstack key={meme.id} backgroundColor={Theme.colors.background} padding="small" cornerRadius="small" border="thin" borderColor={Theme.colors.surfaceHighlight} alignment="center middle" gap="small">
-                                <image url={meme.url || "https://placeholder.com/meme.png"} imageHeight={200} imageWidth={200} resizeMode="cover" />
+                                <image url={meme.url || "https://placeholder.com/meme.png"} imageHeight={128} imageWidth={128} resizeMode="cover" />
                                 <text size="small" color={Theme.colors.text} wrap>{meme.prompt}</text>
                                 <hstack alignment="center middle" gap="medium">
                                     <button appearance="plain" size="small" onPress={() => onVote(meme.id, 1)}>⬆️</button>

@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
-import { Theme, LeaderboardUI } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI } from 'shared';
 import { AssetType, ASSETS } from './types';
 import { GameStrategyServer } from './server';
 
@@ -70,11 +70,25 @@ Devvit.addCustomPostType({
             setLocalState(fresh as unknown as Record<string, any>);
         };
 
+        const syncLeaderboard = async () => {
+            try {
+                const lb = new Leaderboard(context, 'game1_strategy');
+                let username = 'Unknown CEO';
+                try {
+                    const u = await context.reddit.getUserById(userId);
+                    if (u) username = u.username;
+                } catch (e) {}
+                const fresh = await server.getUserState(userId);
+                await lb.submitScore(userId, username, fresh.netWorth);
+            } catch (e) { /* leaderboard sync is optional */ }
+        };
+
         const onBuy = async (assetId: AssetType) => {
             const success = await server.buyAsset(userId, assetId);
             if (success) {
                 context.ui.showToast(`Bought ${ASSETS[assetId].name}!`);
                 await refreshState();
+                await syncLeaderboard();
             } else {
                 context.ui.showToast("Not enough cash!");
             }
@@ -85,6 +99,7 @@ Devvit.addCustomPostType({
             if (amount > 0) {
                 context.ui.showToast(`Invested MAX in ${ASSETS[assetId].name}! (${Math.floor(amount)} units)`);
                 await refreshState();
+                await syncLeaderboard();
             } else {
                 context.ui.showToast("No cash available!");
             }

@@ -61,6 +61,7 @@ Devvit.addMenuItem({
 
 Devvit.addCustomPostType({
     name: 'Hive Mind Gauntlet',
+    height: 'tall',
     render: (context) => {
         const proxy = new ServiceProxy(context);
         const [userId] = useState(() => context.userId || 'anon');
@@ -80,7 +81,10 @@ Devvit.addCustomPostType({
                 tA = fresh[0];
                 tB = fresh[1];
             }
-            return { played: !!played, trends: { a: tA, b: tB } };
+            // Also fetch user stats for display
+            const statsRaw = await context.redis.get(`user:${userId}:stats`);
+            const stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalWins: 0, maxStreak: 0 };
+            return { played: !!played, trends: { a: tA, b: tB }, stats };
         });
 
         const onGuess = async (choice: 'higher' | 'lower') => {
@@ -196,18 +200,22 @@ Devvit.addCustomPostType({
                         <text size="large" weight="bold" color={Theme.colors.text}>{currentTrends.b.query}</text>
 
                         {showResult ? (
-                            <vstack alignment="center middle">
+                            <vstack alignment="center middle" gap="small">
                                 <text size="xlarge" weight="bold" color={Theme.colors.gold}>{currentTrends.b.trafficDisplay}</text>
                                 <text size="large" weight="bold" color={
                                     result === 'correct' ? Theme.colors.success
                                     : result === 'wrong' ? Theme.colors.danger
                                     : Theme.colors.textDim
                                 }>{
-                                    data.played && !result ? 'ALREADY PLAYED'
+                                    data.played && !result ? 'PLAYED TODAY'
                                     : result === 'correct' ? 'CORRECT!'
                                     : result === 'wrong'   ? 'WRONG!'
                                     : 'DONE'
                                 }</text>
+                                <spacer size="small" />
+                                <text size="small" color={Theme.colors.secondary}>🔥 Streak: {data.stats?.streak || 0}</text>
+                                <text size="small" color={Theme.colors.textDim}>Wins: {data.stats?.totalWins || 0} | Best: {data.stats?.maxStreak || 0}</text>
+                                <text size="small" color={Theme.colors.textDim}>Come back tomorrow!</text>
                             </vstack>
                         ) : (
                             <vstack gap="medium">

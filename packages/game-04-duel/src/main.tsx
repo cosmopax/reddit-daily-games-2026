@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
+import { Devvit, useState, useAsync, useForm, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
 import { DuelServer, DuelState } from './DuelServer';
 import { Theme, Leaderboard, LeaderboardUI } from 'shared';
@@ -40,10 +40,11 @@ Devvit.addMenuItem({
 
 Devvit.addCustomPostType({
     name: 'AI Duel',
+    height: 'tall',
     render: (context) => {
         const server = new DuelServer(context as any);
         const [userId] = useState(() => context.userId || 'test-user');
-        const [move, setMove] = useState('');
+        const [processing, setProcessing] = useState(false);
 
         const { data: initialData, loading } = useAsync<any>(async () => {
             const state = await server.getDuelState(userId);
@@ -52,12 +53,20 @@ Devvit.addCustomPostType({
         const [localState, setLocalState] = useState<any>(null);
         const state = localState?.state || initialData?.state;
 
-        const onAttack = async () => {
-            if (!move || !state) return;
-            const newState = await server.submitMove(userId, move);
-            setLocalState({ state: newState });
-            setMove('');
-        };
+        const attackForm = useForm(
+            {
+                fields: [{ type: 'string' as const, name: 'move', label: 'Your Attack', placeholder: 'Cast Spell or Hack System...' }],
+                title: 'Execute Move',
+                acceptLabel: 'ATTACK!'
+            },
+            async (values) => {
+                if (!values.move || !state) return;
+                setProcessing(true);
+                const newState = await server.submitMove(userId, values.move);
+                setLocalState({ state: newState });
+                setProcessing(false);
+            }
+        );
 
         const onReset = async () => {
             const newState = await server.resetGame(userId);
@@ -101,11 +110,7 @@ Devvit.addCustomPostType({
                 <vstack alignment="center middle" padding="small">
                     <hstack alignment="middle" width="100%">
                         <spacer />
-                        <hstack alignment="middle">
-                            <text size="large" weight="bold" color={Theme.colors.primary}>CYBER DUEL v2.0</text>
-                            <spacer />
-                            <text size="small" color={Theme.colors.textDim}>CREDITS: {state.credits}</text>
-                        </hstack>
+                        <text size="large" weight="bold" color={Theme.colors.primary}>CYBER DUEL v2.0</text>
                         <button appearance="plain" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>🏆 Rank</button>
                     </hstack>
                 </vstack>
@@ -130,7 +135,7 @@ Devvit.addCustomPostType({
 
                         {/* AI HUD */}
                         <vstack alignment="end">
-                            <text weight="bold" color={Theme.colors.danger}>GEMINI CORE</text>
+                            <text weight="bold" color={Theme.colors.danger}>{state.opponentName || 'GEMINI CORE'}</text>
                             <text color={Theme.colors.danger} size="xlarge" weight="bold">{state.aiHealth} HP</text>
                             <vstack width="100px" height="4px" backgroundColor="#333333" cornerRadius="small">
                                 <vstack width={`${state.aiHealth}%`} height="100%" backgroundColor={Theme.colors.danger} cornerRadius="small" />
@@ -155,9 +160,8 @@ Devvit.addCustomPostType({
 
                     {/* Controls */}
                     <vstack gap="small">
-                        <textfield placeholder="Cast Spell or Hack System..." onChange={(v: any) => setMove(v)} />
-                        <button appearance="primary" onPress={onAttack} disabled={state.gameOver || state.turn === 'ai'}>
-                            {state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}
+                        <button appearance="primary" onPress={() => context.ui.showForm(attackForm)} disabled={state.gameOver || state.turn === 'ai' || processing}>
+                            {processing ? 'PROCESSING...' : state.turn === 'ai' ? 'AI THINKING...' : 'EXECUTE MOVE'}
                         </button>
                     </vstack>
 

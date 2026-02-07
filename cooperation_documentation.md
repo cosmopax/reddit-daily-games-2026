@@ -69,3 +69,6 @@
 **Context:** The Devvit CLI currently fails when setting App-scoped secrets (`ValidateAppForm Unimplemented`).
 **Workaround:** As a last resort, we are using `isSecret: false` and `scope: SettingScope.Installation`.
 **Implication:** API keys are visible in the Subreddit Settings UI (`/about/edit?page=apps`) and must be configured there manually. Do not revert this unless the CLI bug is confirmed fixed.
+
+### [2026-02-07 10:42] - Environment Repair Revert + 4-Game Planning (Agent: Codex)
+- **Intent:** Revert unintended edits made in this old workspace (`.agents/skills/*` and prior global Codex MCP config touch), validate clean state, then produce a refined cross-game development plan informed by repo docs/code plus a Gemini CLI planning pass.

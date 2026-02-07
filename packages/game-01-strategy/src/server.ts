@@ -39,7 +39,7 @@ export class GameStrategyServer {
         let assetValue = 0;
 
         Object.keys(ASSETS).forEach(id => {
-            const count = data[`asset_${id}`] || 0;
+            const count = Number(data[`asset_${id}`] || 0);
             assets[id] = count;
             // Calculate stats
             const config = ASSETS[id as AssetType];
@@ -49,9 +49,9 @@ export class GameStrategyServer {
             }
         });
 
-        const lastTick = data['lastTick'] || Date.now();
+        const lastTick = Number(data['lastTick'] || Date.now());
         const isNewUser = !data['cash'] && !data['lastTick'];
-        let cash = data['cash'] || (isNewUser ? 1000 : 0);
+        let cash = Number(data['cash'] || (isNewUser ? 1000 : 0));
         let advisors: ExecutiveAdvisor[] = [];
         if (data['advisors_json']) {
             try {

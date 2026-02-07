@@ -1,4 +1,3 @@
-import { Context } from '@devvit/public-api';
 import { RedisWrapper } from './RedisWrapper';
 
 export interface LeaderboardEntry {
@@ -9,11 +8,11 @@ export interface LeaderboardEntry {
 }
 
 export class Leaderboard {
-    context: Context;
+    context: any;
     redis: RedisWrapper;
     gameId: string;
 
-    constructor(context: Context, gameId: string) {
+    constructor(context: any, gameId: string) {
         this.context = context;
         this.redis = new RedisWrapper(context.redis);
         this.gameId = gameId; // 'game1', 'game2', etc.

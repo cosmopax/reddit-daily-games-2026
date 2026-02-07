@@ -1,9 +1,7 @@
-import { Scheduler } from '@devvit/public-api';
-
 export class DailyScheduler {
-    private scheduler: Scheduler;
+    private scheduler: any;
 
-    constructor(scheduler: Scheduler) {
+    constructor(scheduler: any) {
         this.scheduler = scheduler;
     }
 

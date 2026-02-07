@@ -18,7 +18,7 @@ export const NarrativeHeader = (props: NarrativeHeaderProps): JSX.Element => {
 
     return (
         <vstack alignment="center middle" padding="small" backgroundColor={Theme.colors.surface}>
-            <hstack alignment="space-between middle" width="100%">
+            <hstack alignment="middle" width="100%">
                 <spacer />
                 <vstack alignment="center middle">
                     <text
@@ -28,11 +28,9 @@ export const NarrativeHeader = (props: NarrativeHeaderProps): JSX.Element => {
                     >
                         {props.title}
                     </text>
-                    {props.subtitle && (
-                        <text size="small" color={Theme.colors.textDim}>
-                            {props.subtitle}
-                        </text>
-                    )}
+                    <text size="small" color={Theme.colors.textDim}>
+                        {props.subtitle || ''}
+                    </text>
                 </vstack>
                 {props.onLeaderboard ? (
                     <button

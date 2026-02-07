@@ -6,21 +6,23 @@ Devvit.configure({
     redditAPI: true,
     http: true,
     redis: true,
-    scheduler: {
-        daily_reset: async (_event, context) => {
-            console.log('[daily_reset] Ingesting Daily Trends...');
-            try {
-                const proxy = new ServiceProxy(context);
-                const trends = await proxy.fetchDailyTrends(2);
-                await context.redis.set('daily_trend_a', JSON.stringify(trends[0]));
-                await context.redis.set('daily_trend_b', JSON.stringify(trends[1]));
-                await context.redis.del('daily_participants');
-                console.log(`[daily_reset] Stored trends: "${trends[0].query}" vs "${trends[1].query}"`);
-            } catch (e) {
-                console.error('[daily_reset] Failed to ingest trends:', e);
-            }
+});
+
+Devvit.addSchedulerJob({
+    name: 'daily_reset',
+    onRun: async (_event, context) => {
+        console.log('[daily_reset] Ingesting Daily Trends...');
+        try {
+            const proxy = new ServiceProxy(context);
+            const trends = await proxy.fetchDailyTrends(2);
+            await context.redis.set('daily_trend_a', JSON.stringify(trends[0]));
+            await context.redis.set('daily_trend_b', JSON.stringify(trends[1]));
+            await context.redis.del('daily_participants');
+            console.log(`[daily_reset] Stored trends: "${trends[0].query}" vs "${trends[1].query}"`);
+        } catch (e) {
+            console.error('[daily_reset] Failed to ingest trends:', e);
         }
-    }
+    },
 });
 
 // App settings for API keys

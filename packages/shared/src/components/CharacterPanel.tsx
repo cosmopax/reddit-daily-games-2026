@@ -45,10 +45,12 @@ export const CharacterPanel = (props: CharacterPanelProps): JSX.Element => {
                     <text color={character.accentColor} weight="bold" size={compact ? 'small' : 'medium'}>
                         {character.name}
                     </text>
-                    {!compact && (
+                    {!compact ? (
                         <text color={Theme.colors.textDim} size="small">
                             {character.role}
                         </text>
+                    ) : (
+                        <spacer />
                     )}
                 </hstack>
                 <text color={Theme.colors.text} size="small" wrap>
@@ -57,7 +59,7 @@ export const CharacterPanel = (props: CharacterPanelProps): JSX.Element => {
             </vstack>
 
             {/* Optional Action Button */}
-            {action && (
+            {action ? (
                 <button
                     appearance={action.appearance || 'primary'}
                     size="small"
@@ -65,6 +67,8 @@ export const CharacterPanel = (props: CharacterPanelProps): JSX.Element => {
                 >
                     {action.label}
                 </button>
+            ) : (
+                <spacer />
             )}
         </hstack>
     );

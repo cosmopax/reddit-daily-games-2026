@@ -1,5 +1,4 @@
 import { RedisWrapper, ServiceProxy } from 'shared';
-import { Context } from '@devvit/public-api';
 
 const QUEUE_KEY = 'meme:generation_queue';
 const MEME_DATA_KEY = 'meme:data'; // Hash of ID -> JSON string of MemePost
@@ -24,9 +23,9 @@ export interface MemePost {
 
 export class MemeQueue {
     redis: RedisWrapper;
-    context: Context;
+    context: any;
 
-    constructor(context: Context) {
+    constructor(context: any) {
         this.redis = new RedisWrapper(context.redis);
         this.context = context;
     }
@@ -39,12 +38,12 @@ export class MemeQueue {
             prompt,
             timestamp: Date.now(),
         };
-        await this.context.redis.rPush(QUEUE_KEY, JSON.stringify(job));
+        await (this.context.redis as any).rPush(QUEUE_KEY, JSON.stringify(job));
         return jobId;
     }
 
     async processNextJob(): Promise<void> {
-        const rawJob = await this.context.redis.lPop(QUEUE_KEY);
+        const rawJob = await (this.context.redis as any).lPop(QUEUE_KEY);
         if (!rawJob) return;
 
         const job = JSON.parse(rawJob) as MemeJob;

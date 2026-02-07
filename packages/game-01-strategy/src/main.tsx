@@ -63,8 +63,8 @@ Devvit.addCustomPostType({
         const [screen, setScreen] = useState<Screen>('intro');
 
         // Core state
-        const [localState, setLocalState] = useState<Record<string, any> | null>(null);
-        const [choiceResult, setChoiceResult] = useState<DailyChoiceResult | null>(null);
+        const [localState, setLocalState] = useState<any>(null);
+        const [choiceResult, setChoiceResult] = useState<any>(null);
         const [processing, setProcessing] = useState(false);
 
         // Leaderboard
@@ -72,7 +72,7 @@ Devvit.addCustomPostType({
         const [lbLoading, setLbLoading] = useState(false);
 
         // Load initial game state + scenario + today's choice status
-        const { data: initialData, loading } = useAsync(async () => {
+        const { data: initialData, loading } = useAsync<any>(async () => {
             const state = await server.getUserState(userId);
             const scenario = await server.getDailyScenario();
             const todayChoice = await server.hasChosenToday(userId);

@@ -1,9 +1,7 @@
-import { RedisClient } from '@devvit/public-api';
-
 export class RedisWrapper {
-    private redis: RedisClient;
+    private redis: any;
 
-    constructor(redis: RedisClient) {
+    constructor(redis: any) {
         this.redis = redis;
     }
 
@@ -48,4 +46,3 @@ export class RedisWrapper {
         return await this.redis.zAdd(boardKey, { member, score });
     }
 }
-

@@ -1,5 +1,3 @@
-import { Context } from '@devvit/public-api';
-
 export interface ServiceResponse<T> {
     success: boolean;
     data?: T;
@@ -7,9 +5,9 @@ export interface ServiceResponse<T> {
 }
 
 export class ServiceProxy {
-    context: Context;
+    context: any;
 
-    constructor(context: Context) {
+    constructor(context: any) {
         this.context = context;
     }
 

@@ -15,6 +15,38 @@
 
 ## 📝 Change Log (Reverse Chronological)
 
+### [2026-02-07 16:03] - P1 Type/Tooling Alignment + Smoke Green (Agent: Codex)
+- **Intent:** Execute the next approved phase by resolving TypeScript/tooling divergence across shared + all four games so canonical smoke checks run successfully.
+- **Outcome:**
+  - Normalized shared JSX/tooling: `packages/shared/tsconfig.json` (`jsx: preserve`), new `packages/shared/src/global.d.ts`.
+  - Removed cross-package context type coupling in shared wrappers:
+    - `packages/shared/src/ServiceProxy.ts`
+    - `packages/shared/src/Leaderboard.ts`
+    - `packages/shared/src/RedisWrapper.ts`
+    - `packages/shared/src/DailyScheduler.ts`
+  - Standardized JSX global declaration module behavior (`export {}`) in all game/global d.ts files + shared global d.ts.
+  - Replaced invalid scheduler config usage with `Devvit.addSchedulerJob(...)` in:
+    - `packages/game-02-trivia/src/main.tsx`
+    - `packages/game-03-meme/src/main.tsx`
+  - Fixed Meme async refresh flow and queue typing:
+    - `packages/game-03-meme/src/main.tsx`
+    - `packages/game-03-meme/src/MemeQueue.ts`
+  - Stabilized Strategy compile typing in:
+    - `packages/game-01-strategy/src/main.tsx`
+    - `packages/game-01-strategy/src/server.ts`
+  - Added tsconfig type-scoping updates across packages:
+    - `packages/game-01-strategy/tsconfig.json`
+    - `packages/game-02-trivia/tsconfig.json`
+    - `packages/game-03-meme/tsconfig.json`
+    - `packages/game-04-duel/tsconfig.json`
+    - `packages/shared/tsconfig.json`
+  - Added handover update artifact: `CODEX_HANDOVER_4.md`.
+- **Commands:** `git status --short`; `cat`/`nl -ba` inspections for tsconfig/main/shared files; `rg -n` hook/type discovery in `@devvit/public-api` d.ts; repeated `bash scripts/smoke_all_games.sh`; `date '+%Y-%m-%d %H:%M'`.
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` initially failed on shared JSX typing, then game typing/scheduler issues, then final game-03 queue context typing.
+  - After fixes, `bash scripts/smoke_all_games.sh` passed for shared + all games.
+- **Git/Worktree:** Uncommitted local changes in current checkout (`main`).
+
 ### [2026-02-06 20:00] - P0 Stabilization + Handover Sync (Agent: Codex)
 - **Intent:** Implement the approved takeover plan's immediate P0/P1 items: fix gameplay correctness gaps, restore verification script compatibility, add canonical smoke command, and sync handover/docs to current code reality.
 - **Outcome:**

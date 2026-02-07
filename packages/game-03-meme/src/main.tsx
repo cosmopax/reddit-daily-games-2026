@@ -7,12 +7,14 @@ Devvit.configure({
     redditAPI: true,
     http: true,
     redis: true,
-    scheduler: {
-        process_queue: async (event, context) => {
-            const queue = new MemeQueue(context);
-            await queue.processNextJob();
-        }
-    }
+});
+
+Devvit.addSchedulerJob({
+    name: 'process_queue',
+    onRun: async (_event, context) => {
+        const queue = new MemeQueue(context);
+        await queue.processNextJob();
+    },
 });
 
 // App settings for API keys
@@ -60,6 +62,7 @@ Devvit.addCustomPostType({
         const queue = new MemeQueue(context);
 
         const [feed, setFeed] = useState<any[]>([]);
+        const [refreshNonce, setRefreshNonce] = useState<number>(0);
         const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
 
         const SUBMIT_COOLDOWN_MS = 30_000;
@@ -85,18 +88,25 @@ Devvit.addCustomPostType({
             }
         );
 
-        // Load Feed
-        const { data, loading, refresh } = useAsync(async () => {
+        const loadFeed = async () => {
             const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
             if (!ids || ids.length === 0) return { posts: [] };
             const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
             const posts = postsRaw.filter(p => !!p).map(p => JSON.parse(p!));
             return { posts };
+        };
+
+        // Load feed and sync to local state only when async call completes.
+        const { loading } = useAsync(loadFeed, {
+            depends: refreshNonce,
+            finally: (data) => {
+                setFeed((data as any)?.posts || []);
+            },
         });
 
-        if (data && data.posts) {
-            setFeed(data.posts);
-        }
+        const refreshFeed = async () => {
+            setRefreshNonce((prev) => prev + 1);
+        };
 
         const onVote = async (memeId: string, delta: number) => {
             const newFeed = feed.map(p => {
@@ -183,7 +193,7 @@ Devvit.addCustomPostType({
                 <vstack cornerRadius="small" backgroundColor={Theme.colors.surface} grow padding="small">
                     <hstack alignment="space-between middle">
                         <text color={Theme.narrative.goldHighlight} weight="bold" size="small">🏆 ARENA COMBATANTS</text>
-                        <button appearance="plain" size="small" onPress={() => refresh()}>🔄</button>
+                        <button appearance="plain" size="small" onPress={() => refreshFeed()}>🔄</button>
                     </hstack>
                     <spacer size="small" />
 

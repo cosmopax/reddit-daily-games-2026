@@ -104,3 +104,17 @@
 
 ### [2026-02-07 10:42] - Environment Repair Revert + 4-Game Planning (Agent: Codex)
 - **Intent:** Revert unintended edits made in this old workspace (`.agents/skills/*` and prior global Codex MCP config touch), validate clean state, then produce a refined cross-game development plan informed by repo docs/code plus a Gemini CLI planning pass.
+
+### [2026-02-09 20:38] - Docs Status Sync + API Key Runbook + Smoke Re-Validation (Agent: Codex)
+- **Intent:** Execute user-requested status hardening steps by running the canonical smoke gate, then aligning stale docs/status artifacts with the latest authoritative handover and documenting API key operational risk/rotation guidance.
+- **Outcome:**
+  - Verified current baseline and smoke health from repo root.
+  - Confirmed docs in current `HEAD` already satisfy requested step 2/3 outcomes:
+    - `README.md` already reflects per-package install/upload flow and API-key risk/rotation runbook.
+    - `progress.md` and `findings.md` already point to `CODEX_HANDOVER_4.md` and current smoke status.
+  - No additional edits were required in `README.md`, `progress.md`, or `findings.md` in this run.
+- **Commands:** `git status --short --branch`; `bash scripts/smoke_all_games.sh`; `sed -n '1,260p' README.md`; `sed -n '1,260p' progress.md`; `sed -n '1,260p' findings.md`; `tail -n 140 cooperation_documentation.md`; `date '+%Y-%m-%d %H:%M'`.
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` (pre-edit) passed for shared + all four games.
+  - `bash scripts/smoke_all_games.sh` (post-edit) passed for shared + all four games.
+- **Git/Worktree:** Uncommitted local changes in current checkout (`main`): `cooperation_documentation.md`.

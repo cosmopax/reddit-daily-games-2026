@@ -120,3 +120,15 @@
 
 ### [2026-02-07 10:42] - Environment Repair Revert + 4-Game Planning (Agent: Codex)
 - **Intent:** Revert unintended edits made in this old workspace (`.agents/skills/*` and prior global Codex MCP config touch), validate clean state, then produce a refined cross-game development plan informed by repo docs/code plus a Gemini CLI planning pass.
+### [2026-02-10 00:26] - Post-Submission Reviewer Ops + Status Sync (Agent: Codex)
+- **Intent:** Execute post-submission documentation hardening with reviewer-first focus: upgrade reusable reviewer response templates, tighten demo verification/evidence checklist, and sync stale status references to latest handover source.
+- **Outcome:**
+  - Upgraded `reviewer_responses.md` with a quick topic index, <=24h response protocol, legal/compliance response block (Terms/Privacy URLs), and per-game evidence map.
+  - Expanded `docs/demo_post_checklist.md` with post-review install verification and minimal evidence capture requirements aligned to demo script flow.
+  - Synced stale status references from `CODEX_HANDOVER_4.md` to `CODEX_HANDOVER_5.md` in `README.md`, `progress.md`, and `findings.md`.
+  - Updated legal-link risk wording in `progress.md` from blocker language to configured-and-verify language for future publish runs.
+- **Commands:** `git status --short --branch`; `sed -n` inspections of handover/docs/status files; `bash scripts/smoke_all_games.sh`; `rg -n "CODEX_HANDOVER_4.md" README.md progress.md findings.md`; `git add reviewer_responses.md docs/demo_post_checklist.md`; `git commit -m "docs: strengthen post-submission reviewer and demo ops"`; `date '+%Y-%m-%d %H:%M'`.
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` passed for shared + all four games after edits.
+  - Targeted stale-reference scan on status docs returned no `CODEX_HANDOVER_4.md` hits.
+- **Git/Worktree:** Worktree `./.worktrees/codex-solo-completion` on branch `codex/solo-completion`; commit `036ba61` captured reviewer/demo docs; status-sync + log updates are captured in the next commit.

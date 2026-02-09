@@ -74,7 +74,7 @@ Rotation procedure:
 
 ## 🛠 Next Steps (Handover)
 
-*   **Latest implementation status**: `CODEX_HANDOVER_4.md`.
+*   **Latest implementation status**: `CODEX_HANDOVER_5.md`.
 *   **Coordination log**: `cooperation_documentation.md`.
 *   **Cross-game typecheck gate**: `scripts/smoke_all_games.sh`.
 

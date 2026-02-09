@@ -16,7 +16,7 @@
 - Actions taken:
   - Updated root README setup instructions to match actual repo structure (no root package manifest).
   - Added API key operations runbook and rotation guidance.
-  - Synced project status references to `CODEX_HANDOVER_4.md`.
+  - Synced project status references to `CODEX_HANDOVER_5.md`.
 - Files created/modified:
   - `README.md`
   - `findings.md`
@@ -39,7 +39,7 @@
 ## Risks & Flagged Items
 | Item | Severity | Mitigation |
 |------|----------|------------|
-| T&C / Privacy URLs | High | **CRITICAL:** `devvit publish` requires these links in developer settings. Ensure these are set for all 4 apps. |
+| T&C / Privacy URLs | Medium | Configured for all four apps; verify links remain unchanged before any future `devvit publish` run. |
 | API Rate Limits | Medium | ServiceProxy fallbacks implemented, but sustained heavy load might degrade UX to "Static/Placeholder" mode. |
 | AI Content Edge Cases | Low | System prompts updated for safety, but community reporting is the primary moderator path. |
 
@@ -55,7 +55,7 @@
 | none | - | - | - |
 
 ## Current State Snapshot
-- Latest authoritative handover: `CODEX_HANDOVER_4.md` (2026-02-07).
+- Latest authoritative handover: `CODEX_HANDOVER_5.md` (2026-02-09).
 - Canonical smoke checks pass in current workspace.
 - Docs now reflect per-package install/upload workflow and current API-key workaround.
 

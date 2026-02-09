@@ -6,7 +6,7 @@
 - Document API key operations risk and rotation process.
 
 ## Research Findings
-- Latest authoritative handover is `CODEX_HANDOVER_4.md` (dated 2026-02-07).
+- Latest authoritative handover is `CODEX_HANDOVER_5.md` (dated 2026-02-09).
 - `bash scripts/smoke_all_games.sh` currently passes for shared + all four games.
 - Root README previously assumed `npm install` at repo root, but no root package manifest exists.
 - Installation-scoped settings workaround remains active for API keys (`isSecret: false`).
@@ -14,7 +14,7 @@
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Treat `CODEX_HANDOVER_4.md` as status source of truth | Matches project agent guidance in AGENTS.md |
+| Treat `CODEX_HANDOVER_5.md` as status source of truth | Matches project agent guidance in AGENTS.md |
 | Document per-package install/upload flow in root README | Prevent incorrect root install instructions |
 | Add explicit API key risk + rotation runbook | Reduce ops/security ambiguity while workaround is required |
 
@@ -24,7 +24,7 @@
 | none | - |
 
 ## Resources
-- `CODEX_HANDOVER_4.md`
+- `CODEX_HANDOVER_5.md`
 - `cooperation_documentation.md`
 - `README.md`
 - `docs/ARCHITECTURE.md`

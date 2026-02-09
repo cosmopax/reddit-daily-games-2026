@@ -1,24 +1,26 @@
 # MEME WARS
 
-> **cosmopax | Total Gamification**
+> **Part of the 2026 Reddit Daily Games Portfolio**
 
-AI-powered meme battles! Generate memes and vote on the best ones in your community.
+**Meme Wars** turns your subreddit into a creative arena. It leverages state-of-the-art Generative AI to allow users to create, share, and vote on community memes in a competitive daily cycle.
 
-## Gameplay
-- Submit text prompts to generate AI memes
-- Community votes on the funniest creations
-- Daily meme battles with winners announced
-- Earn reputation as the best meme lord
+## 🚀 The Daily Loop
+- **Create:** Submit text prompts to generate unique memes using the **Flux.1** model.
+- **Vote:** Browse the community feed and upvote the funniest creations. 
+- **Conquer:** The highest-voted memes each day win reputation points and are featured on the subreddit's "Meme Lord" leaderboard.
+- **Integrity:** Built-in vote guarding prevents duplicates and ensures fair play.
 
-## API Keys Required
-| Key | Purpose |
-|-----|---------|
-| `HUGGINGFACE_TOKEN` | AI image generation (Flux.1) |
+## 🧠 AI & Technology
+- **Generative Power:** Uses **Hugging Face (Flux.1 schnell)** for lightning-fast, high-quality image generation.
+- **Async Processing:** Employs a robust job queue to handle image generation in the background, keeping the UI responsive.
+- **Fallback UI:** If AI generation is unavailable, the system automatically provides themed placeholders to maintain the competitive flow.
 
-## Set API Keys
+## 🛠️ Setup & Configuration
+Requires a `HUGGINGFACE_TOKEN`.
+
 ```bash
 devvit settings set HUGGINGFACE_TOKEN "your-token-here"
 ```
 
-## Part of the 2026 Reddit Daily Games Hackathon
-Built with Devvit by cosmopax
+---
+Built with ❤️ by **cosmopax** for the Reddit Developers Hackathon.

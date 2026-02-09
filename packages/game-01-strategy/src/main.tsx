@@ -1,7 +1,7 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
 import { Theme, Leaderboard, LeaderboardUI, VIC, SAL, CharacterPanel, NarrativeHeader } from 'shared';
-import { AssetType, ASSETS, DailyChoiceResult } from './types';
+import { AssetType, ASSETS } from './types';
 import { GameStrategyServer } from './server';
 
 Devvit.configure({
@@ -173,6 +173,7 @@ Devvit.addCustomPostType({
                     <vstack alignment="center middle">
                         <text size="xxlarge" weight="bold" color={Theme.narrative.goldHighlight}>GET RICH LAZY</text>
                         <text size="small" color={Theme.colors.textDim}>A Financial Education Experience</text>
+                        <text size="xsmall" color={Theme.colors.textDim}>Daily loop: choose one advisor, then scale passive income hourly.</text>
                     </vstack>
 
                     <spacer size="small" />
@@ -212,7 +213,7 @@ Devvit.addCustomPostType({
                             }
                         }}
                     >
-                        ENTER THE MARKET
+                        ▶ PLAY NOW
                     </button>
 
                     <hstack alignment="center middle" padding="small">

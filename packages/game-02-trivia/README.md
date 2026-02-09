@@ -22,5 +22,14 @@ devvit settings set SERPAPI_KEY "your-key-here"
 devvit settings set GEMINI_API_KEY "your-key-here"
 ```
 
+## Quick Verify
+```bash
+npx devvit whoami
+npx devvit upload
+```
+- Use subreddit menu action: **Create Hive Mind Gauntlet Post**
+- Daily loop check: one guess per UTC day with streak tracking
+- Publish note: `npx devvit publish` requires Terms + Privacy links in app developer settings
+
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

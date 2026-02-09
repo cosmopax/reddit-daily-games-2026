@@ -22,5 +22,14 @@ devvit settings set GEMINI_API_KEY "your-key-here"
 devvit settings set HUGGINGFACE_TOKEN "your-token-here"
 ```
 
+## Quick Verify
+```bash
+npx devvit whoami
+npx devvit upload
+```
+- Use subreddit menu action: **Create AI Duel Post**
+- Combat check: turns alternate and victory increments leaderboard once
+- Publish note: `npx devvit publish` requires Terms + Privacy links in app developer settings
+
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

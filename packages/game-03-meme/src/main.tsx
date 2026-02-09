@@ -3,6 +3,8 @@ import './global.d.ts';
 import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, MEME_LORD, CharacterPanel } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
+const MEME_VOTE_PREFIX = 'meme:votes:';
+
 Devvit.configure({
     redditAPI: true,
     http: true,
@@ -60,6 +62,7 @@ Devvit.addCustomPostType({
     render: (context) => {
         const [status, setStatus] = useState<string>('Ready to create');
         const queue = new MemeQueue(context);
+        const [currentUserId] = useState(() => context.userId || 'anon');
 
         const [feed, setFeed] = useState<any[]>([]);
         const [refreshNonce, setRefreshNonce] = useState<number>(0);
@@ -84,7 +87,7 @@ Devvit.addCustomPostType({
                 setStatus('⚡ Forging your meme...');
                 const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
                 setLastSubmitTime(Date.now());
-                setStatus('🗡️ Your creation enters the arena! Tap Refresh in ~30s.');
+                setStatus(`🗡️ Job ${jobId} queued. Tap Refresh in ~30s.`);
             }
         );
 
@@ -92,7 +95,18 @@ Devvit.addCustomPostType({
             const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
             if (!ids || ids.length === 0) return { posts: [] };
             const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
-            const posts = postsRaw.filter(p => !!p).map(p => JSON.parse(p!));
+            const posts = [];
+            for (let i = 0; i < postsRaw.length; i++) {
+                const raw = postsRaw[i];
+                if (!raw) continue;
+                try {
+                    const parsed = JSON.parse(raw);
+                    parsed.votes = Number(ids[i]?.score || parsed.votes || 0);
+                    posts.push(parsed);
+                } catch (e) {
+                    console.warn('[meme] skipping malformed post payload');
+                }
+            }
             return { posts };
         };
 
@@ -109,19 +123,44 @@ Devvit.addCustomPostType({
         };
 
         const onVote = async (memeId: string, delta: number) => {
+            if (currentUserId === 'anon') {
+                context.ui.showToast('Sign in to vote.');
+                return;
+            }
+
+            const voteKey = `${MEME_VOTE_PREFIX}${memeId}`;
+            const previousVoteRaw = await context.redis.hGet(voteKey, currentUserId);
+            const previousVote = Number(previousVoteRaw || 0);
+            if (previousVote === delta) {
+                context.ui.showToast('Vote already recorded.');
+                return;
+            }
+            const adjustment = delta - previousVote;
+            if (adjustment === 0) return;
+
             const newFeed = feed.map(p => {
-                if (p.id === memeId) return { ...p, votes: (p.votes || 0) + delta };
+                if (p.id === memeId) return { ...p, votes: (p.votes || 0) + adjustment };
                 return p;
             });
             setFeed(newFeed);
 
-            await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
+            await context.redis.hSet(voteKey, { [currentUserId]: String(delta) });
+            await context.redis.zIncrBy('meme:leaderboard', memeId, adjustment);
+
+            const rawPost = await context.redis.hGet('meme:data', memeId);
+            if (rawPost) {
+                try {
+                    const parsed = JSON.parse(rawPost);
+                    parsed.votes = Math.max(0, Number(parsed.votes || 0) + adjustment);
+                    await context.redis.hSet('meme:data', { [memeId]: JSON.stringify(parsed) });
+                } catch (e) { }
+            }
 
             const targetMeme = feed.find(p => p.id === memeId);
             if (targetMeme?.userId) {
                 const authorId = targetMeme.userId;
                 const authorScoreKey = `user:${authorId}:meme_score`;
-                const newScore = await context.redis.incrBy(authorScoreKey, delta);
+                const newScore = await context.redis.incrBy(authorScoreKey, adjustment);
                 const lb = new Leaderboard(context, 'game3_meme');
                 let username = 'Meme Artist';
                 try {
@@ -168,6 +207,9 @@ Devvit.addCustomPostType({
                     onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     leaderboardLabel="👑 Lords"
                 />
+                <hstack alignment="center middle" padding="xsmall">
+                    <text size="xsmall" color={Theme.colors.textDim}>How to play: generate one meme, vote once per meme, climb the arena leaderboard.</text>
+                </hstack>
 
                 {/* Arena Master */}
                 <CharacterPanel

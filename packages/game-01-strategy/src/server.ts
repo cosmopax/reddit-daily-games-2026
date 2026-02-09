@@ -4,6 +4,11 @@ import { ASSETS, AssetType, UserState, ExecutiveAdvisor, DailyScenario, DailyCho
 import { getRandomScenario } from './fallbackScenarios';
 
 const USER_KEY_PREFIX = 'user:v1:';
+const ACTIVE_USERS_KEY = 'strategy:active_users';
+const ACTIVE_CURSOR_KEY = 'strategy:hourly_cursor';
+const HOURLY_BATCH_SIZE = 25;
+const DAILY_SCENARIO_PREFIX = 'daily_scenario:';
+const LEGACY_DAILY_SCENARIO_KEY = 'daily_scenario';
 
 export class GameStrategyServer {
     redis: RedisWrapper;
@@ -22,11 +27,50 @@ export class GameStrategyServer {
     }
 
     private getTodayChoiceKey(): string {
+        return `daily_choices:${this.getTodayDateKey()}`;
+    }
+
+    private getTodayDateKey(): string {
         const now = new Date();
         const yyyy = now.getUTCFullYear();
         const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
         const dd = String(now.getUTCDate()).padStart(2, '0');
-        return `daily_choices:${yyyy}-${mm}-${dd}`;
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    private getDailyScenarioKey(dateKey: string = this.getTodayDateKey()): string {
+        return `${DAILY_SCENARIO_PREFIX}${dateKey}`;
+    }
+
+    private calculateAssetValue(assets: Record<AssetType, number>): number {
+        let assetValue = 0;
+        Object.keys(ASSETS).forEach(id => {
+            const count = assets[id as AssetType] || 0;
+            assetValue += count * ASSETS[id as AssetType].cost;
+        });
+        return assetValue;
+    }
+
+    private async touchActiveUser(userId: string): Promise<void> {
+        try {
+            await this.context.redis.zAdd(ACTIVE_USERS_KEY, { member: userId, score: Date.now() });
+        } catch (e) {
+            console.warn('[strategy] failed to touch active user', e);
+        }
+    }
+
+    private async syncLeaderboardForUser(userId: string, state: UserState, avatarUrl?: string): Promise<void> {
+        try {
+            const lb = new Leaderboard(this.context, 'game1_strategy');
+            let username = 'Unknown CEO';
+            try {
+                const user = await this.context.reddit.getUserById(userId);
+                if (user) username = user.username;
+            } catch (e) { }
+            await lb.submitScore(userId, username, state.netWorth, avatarUrl);
+        } catch (e) {
+            console.warn('[strategy] leaderboard sync failed', e);
+        }
     }
 
     async getUserState(userId: string): Promise<UserState> {
@@ -78,20 +122,26 @@ export class GameStrategyServer {
         // Persist accrued income so it's not lost on reload
         if (elapsedHours > 0.001 || isNewUser) {
             await this.saveUserState(userId, state);
+        } else {
+            await this.touchActiveUser(userId);
         }
 
         return state;
     }
 
     async saveUserState(userId: string, state: UserState): Promise<void> {
-        const data: Record<string, number> = {
+        const data: Record<string, number | string> = {
             cash: state.cash,
             lastTick: state.lastTick,
         };
         Object.entries(state.assets).forEach(([id, count]) => {
             data[`asset_${id}`] = count;
         });
+        if (state.advisors && state.advisors.length > 0) {
+            data.advisors_json = JSON.stringify(state.advisors);
+        }
         await this.redis.savePackedState(this.getUserKey(userId), 'state', data);
+        await this.touchActiveUser(userId);
     }
 
     async buyAsset(userId: string, assetType: AssetType, amount: number = 1): Promise<boolean> {
@@ -109,11 +159,13 @@ export class GameStrategyServer {
         if (state.cash >= totalCost) {
             state.cash -= totalCost;
             state.assets[assetType] = (state.assets[assetType] || 0) + amount;
+            state.netWorth = state.cash + this.calculateAssetValue(state.assets);
 
             // Critical: Update lastTick to NOW because we just consumed the accrued cash/time delta
             // getUserState returns 'now' as lastTick if we use the projected value.
             // So saving 'state' as returned by getUserState is correct.
             await this.saveUserState(userId, state);
+            await this.syncLeaderboardForUser(userId, state);
             return true;
         }
         return false;
@@ -132,7 +184,9 @@ export class GameStrategyServer {
         if (maxAmount > 0) {
             state.cash = 0; // Utilized all cash
             state.assets[assetType] = (state.assets[assetType] || 0) + maxAmount;
+            state.netWorth = state.cash + this.calculateAssetValue(state.assets);
             await this.saveUserState(userId, state);
+            await this.syncLeaderboardForUser(userId, state);
             return maxAmount;
         }
         return 0;
@@ -143,9 +197,35 @@ export class GameStrategyServer {
      * To avoid valid timeout, we might process a shard.
      */
     async onHourlyTick(event: any) {
-        console.log("Processing hourly tick...");
-        // Ideally, we'd iterate a specific ZSET shard of active users.
-        // For MVP, we pass. Implementation details for sharding would go here.
+        const cursorRaw = await this.context.redis.get(ACTIVE_CURSOR_KEY);
+        const startIndex = Number(cursorRaw || 0);
+        let users = await this.context.redis.zRange(ACTIVE_USERS_KEY, startIndex, startIndex + HOURLY_BATCH_SIZE - 1, { by: 'rank' });
+
+        if ((!users || users.length === 0) && startIndex > 0) {
+            users = await this.context.redis.zRange(ACTIVE_USERS_KEY, 0, HOURLY_BATCH_SIZE - 1, { by: 'rank' });
+        }
+
+        if (!users || users.length === 0) {
+            console.log('[strategy.hourly_tick] no active users');
+            await this.context.redis.set(ACTIVE_CURSOR_KEY, '0');
+            return;
+        }
+
+        let processed = 0;
+        for (const item of users) {
+            const userId = item.member;
+            try {
+                const state = await this.getUserState(userId);
+                await this.syncLeaderboardForUser(userId, state);
+                processed += 1;
+            } catch (e) {
+                console.error(`[strategy.hourly_tick] failed user=${userId}`, e);
+            }
+        }
+
+        const nextCursor = users.length < HOURLY_BATCH_SIZE ? 0 : startIndex + users.length;
+        await this.context.redis.set(ACTIVE_CURSOR_KEY, String(nextCursor));
+        console.log(`[strategy.hourly_tick] processed=${processed} nextCursor=${nextCursor}`);
     }
     /**
      * Unlocks a new "Executive Advisor" if net worth milestones are met.
@@ -189,29 +269,9 @@ export class GameStrategyServer {
         // Let's store as 'advisors_json' field.
         await this.saveWithAdvisors(userId, state, newAdvisors);
 
-        // Sync to Leaderboard (High Score = Net Worth)
-        const lb = new Leaderboard(this.context, 'game1_strategy');
-        // We need username. Context doesn't always have it in older triggers, but useful here.
-        // We'll try to get it from context if possible, or fetch.
-        // For now, pass 'Trader' if unknown, but usually we can get it or cache it.
-        // Assuming we rely on client to pass username? No, server side.
-        // We will just use userId for now, update metadata later?
-        // Actually, let's fetch user if we can.
-        let username = 'Unknown CEO';
-        try {
-            const user = await this.context.reddit.getUserById(userId);
-            if (user) username = user.username;
-        } catch (e) { }
-
-        // NetWorth calculation might be projected. Let's use the current 'cash + assetVal'.
-        // Recalculate net worth to be sure
-        let currentNetWorth = state.cash;
-        Object.keys(ASSETS).forEach(id => {
-            const count = state.assets[id as AssetType] || 0;
-            currentNetWorth += count * ASSETS[id as AssetType].cost;
-        });
-
-        await lb.submitScore(userId, username, currentNetWorth, advisor.portraitUrl);
+        state.advisors = newAdvisors;
+        state.netWorth = state.cash + this.calculateAssetValue(state.assets);
+        await this.syncLeaderboardForUser(userId, state, advisor.portraitUrl);
 
         return advisor;
     }
@@ -235,22 +295,34 @@ export class GameStrategyServer {
      * Get today's scenario. Tries Redis cache → Gemini generation → fallback.
      */
     async getDailyScenario(): Promise<DailyScenario> {
+        const scenarioKey = this.getDailyScenarioKey();
         // Check Redis for cached scenario
-        const cached = await this.context.redis.get('daily_scenario');
+        const cached = await this.context.redis.get(scenarioKey);
         if (cached) {
             try {
                 return JSON.parse(cached) as DailyScenario;
             } catch (e) { /* corrupted, regenerate */ }
         }
 
+        // Compatibility: hydrate new date-scoped key from legacy key if it exists.
+        const legacy = await this.context.redis.get(LEGACY_DAILY_SCENARIO_KEY);
+        if (legacy) {
+            try {
+                const parsed = JSON.parse(legacy) as DailyScenario;
+                await this.context.redis.set(scenarioKey, JSON.stringify(parsed));
+                return parsed;
+            } catch (e) { /* ignore malformed legacy scenario */ }
+        }
+
         // Try Gemini generation
         const generated = await this.generateDailyScenario();
         if (generated) {
             // Cache with ~25 hour TTL (in ms for redis expiry)
-            await this.context.redis.set('daily_scenario', JSON.stringify(generated));
+            await this.context.redis.set(scenarioKey, JSON.stringify(generated));
+            await this.context.redis.set(LEGACY_DAILY_SCENARIO_KEY, JSON.stringify(generated));
             // Set expiration (25 hours)
             try {
-                await (this.context.redis as any).expire('daily_scenario', 90000);
+                await (this.context.redis as any).expire(scenarioKey, 90000);
             } catch (e) { /* expire not available, scenario persists until overwritten */ }
             return generated;
         }
@@ -267,7 +339,8 @@ export class GameStrategyServer {
         // Track used scenario IDs (keep last 5)
         const updatedIds = [...recentIds, fallback.id].slice(-5);
         await this.context.redis.set('recent_scenario_ids', JSON.stringify(updatedIds));
-        await this.context.redis.set('daily_scenario', JSON.stringify(fallback));
+        await this.context.redis.set(scenarioKey, JSON.stringify(fallback));
+        await this.context.redis.set(LEGACY_DAILY_SCENARIO_KEY, JSON.stringify(fallback));
 
         return fallback;
     }
@@ -362,6 +435,18 @@ RULES for multiplierRange:
      * Applies the multiplier, records the choice, syncs leaderboard.
      */
     async processDailyChoice(userId: string, choice: 'vic' | 'sal'): Promise<DailyChoiceResult> {
+        const existingChoice = await this.hasChosenToday(userId);
+        if (existingChoice) {
+            const state = await this.getUserState(userId);
+            return {
+                choice: existingChoice as 'vic' | 'sal',
+                multiplier: 1,
+                cashBefore: state.cash,
+                cashAfter: state.cash,
+                narrative: `You already chose ${existingChoice.toUpperCase()} today. Come back after UTC midnight.`,
+            };
+        }
+
         const state = await this.getUserState(userId);
         const scenario = await this.getDailyScenario();
 
@@ -376,12 +461,7 @@ RULES for multiplierRange:
         state.lastTick = Date.now();
 
         // Recalculate net worth
-        let assetValue = 0;
-        Object.keys(ASSETS).forEach(id => {
-            const count = state.assets[id as AssetType] || 0;
-            assetValue += count * ASSETS[id as AssetType].cost;
-        });
-        state.netWorth = state.cash + assetValue;
+        state.netWorth = state.cash + this.calculateAssetValue(state.assets);
 
         await this.saveUserState(userId, state);
 
@@ -411,15 +491,7 @@ RULES for multiplierRange:
         }
 
         // Sync leaderboard
-        try {
-            const lb = new Leaderboard(this.context, 'game1_strategy');
-            let username = 'Unknown CEO';
-            try {
-                const user = await this.context.reddit.getUserById(userId);
-                if (user) username = user.username;
-            } catch (e) { }
-            await lb.submitScore(userId, username, state.netWorth);
-        } catch (e) { }
+        await this.syncLeaderboardForUser(userId, state);
 
         return {
             choice,

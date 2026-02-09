@@ -3,6 +3,13 @@ import { RedisWrapper, ServiceProxy, Leaderboard } from 'shared';
 
 const USER_HEALTH = 100;
 const AI_HEALTH = 100;
+const MAX_HISTORY = 40;
+const START_CREDITS = 100;
+const MOVE_CREDIT_COST = 10;
+const MOVE_BONUS_DAMAGE = 2;
+const WIN_CREDIT_REWARD = 25;
+const LOSS_CREDIT_REWARD = 5;
+const FALLBACK_PORTRAIT = 'https://placehold.co/256x256/0B0C10/FF4500?text=VALKYRIE';
 
 export interface DuelState {
     userHealth: number;
@@ -14,6 +21,7 @@ export interface DuelState {
     opponentRole?: string;
     opponentPortrait?: string;
     credits: number;
+    wins?: number;
 }
 
 export class DuelServer {
@@ -29,65 +37,117 @@ export class DuelServer {
         return `duel:v1:${userId}`;
     }
 
+    private appendHistory(state: DuelState, line: string): void {
+        state.history.push(line);
+        if (state.history.length > MAX_HISTORY) {
+            state.history = state.history.slice(-MAX_HISTORY);
+        }
+    }
+
+    private clampHealth(value: number): number {
+        return Math.max(0, Math.min(USER_HEALTH, Number(value || 0)));
+    }
+
+    private normalizeState(parsed: any): DuelState {
+        const history = Array.isArray(parsed?.history)
+            ? parsed.history.filter((x: unknown) => typeof x === 'string')
+            : [];
+        const normalized: DuelState = {
+            userHealth: this.clampHealth(parsed?.userHealth ?? USER_HEALTH),
+            aiHealth: this.clampHealth(parsed?.aiHealth ?? AI_HEALTH),
+            history: history.slice(-MAX_HISTORY),
+            turn: parsed?.turn === 'ai' ? 'ai' : 'user',
+            gameOver: Boolean(parsed?.gameOver),
+            opponentName: typeof parsed?.opponentName === 'string' ? parsed.opponentName : undefined,
+            opponentRole: typeof parsed?.opponentRole === 'string' ? parsed.opponentRole : undefined,
+            opponentPortrait: typeof parsed?.opponentPortrait === 'string' ? parsed.opponentPortrait : undefined,
+            credits: Math.max(0, Number(parsed?.credits ?? START_CREDITS)),
+            wins: Math.max(0, Number(parsed?.wins ?? 0)),
+        };
+        if (normalized.gameOver) normalized.turn = 'user';
+        return normalized;
+    }
+
+    private async saveState(userId: string, state: DuelState): Promise<void> {
+        await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+    }
+
+    private createNewState(name: string, role: string, portrait: string): DuelState {
+        return {
+            userHealth: USER_HEALTH,
+            aiHealth: AI_HEALTH,
+            history: [`Duel Protocol Initiated. Opponent: ${name} (${role})`],
+            turn: 'user',
+            gameOver: false,
+            opponentName: name,
+            opponentRole: role,
+            opponentPortrait: portrait,
+            credits: START_CREDITS,
+            wins: 0,
+        };
+    }
+
     async getDuelState(userId: string): Promise<DuelState> {
         const raw = await this.context.redis.get(this.getKey(userId));
         if (!raw) {
-            // Initialize new game with Cyber-Valkyrie
-            // Initialize new game
-            // The original code had a complex initialization with proxy calls.
-            // The provided edit simplifies this to a fixed AI opponent.
-            // Keeping the original structure for proxy calls but adding credits.
             const proxy = new ServiceProxy(this.context);
             const roles = ['Blade Dancer', 'Neural Witch', 'Chrome Assassin', 'Void Siren'];
             const role = roles[Math.floor(Math.random() * roles.length)];
             const name = `Valkyrie ${Math.floor(Math.random() * 99)}`;
 
-            // Generate "Hot" portrait
-            let portrait = '';
+            let portrait = FALLBACK_PORTRAIT;
             try {
                 portrait = await proxy.generateCharacterPortrait(role, 'Cyber-District-9', 'Valkyrie');
             } catch (e) {
                 console.error("Portrait gen failed", e);
-                portrait = "https://placeholder.com/valkyrie_fallback.png";
             }
 
-            const newState: DuelState = {
-                userHealth: USER_HEALTH,
-                aiHealth: AI_HEALTH,
-                history: [`Duel Protocol Initiated. Opponent: ${name} (${role})`],
-                turn: 'user',
-                gameOver: false,
-                opponentName: name,
-                opponentRole: role,
-                opponentPortrait: portrait,
-                credits: 100 // Added credits
-            };
-
-            await this.context.redis.set(this.getKey(userId), JSON.stringify(newState)); // Using new getUserKey
+            const newState = this.createNewState(name, role, portrait);
+            await this.saveState(userId, newState);
             return newState;
         }
-        const state = JSON.parse(raw);
-        if (state.credits === undefined) state.credits = 100;
-        return state;
+        try {
+            return this.normalizeState(JSON.parse(raw));
+        } catch (e) {
+            console.warn('[duel] corrupted state, resetting', e);
+            await this.context.redis.del(this.getKey(userId));
+            return this.getDuelState(userId);
+        }
     }
 
     async submitMove(userId: string, move: string): Promise<DuelState> {
         const state = await this.getDuelState(userId);
-        if (state.gameOver || state.turn !== 'user') return state;
+        if (state.gameOver) return state;
+        if (state.turn !== 'user') {
+            return this.processAITurn(userId, state);
+        }
 
-        // 1. Process User Move via LLM Judge
+        const sanitizedMove = (move || '').trim().slice(0, 180);
+        if (!sanitizedMove) return state;
+
+        let bonusDamage = 0;
+        if (state.credits >= MOVE_CREDIT_COST) {
+            state.credits -= MOVE_CREDIT_COST;
+            bonusDamage = MOVE_BONUS_DAMAGE;
+            this.appendHistory(state, `You spent ${MOVE_CREDIT_COST} credits to overclock your strike (+${MOVE_BONUS_DAMAGE} damage).`);
+        }
+
         const proxy = new ServiceProxy(this.context);
-        const { damage: dmg, narrative } = await proxy.evaluateUserMove(move, state.history);
-        state.history.push(`You used: ${move}`);
-        state.aiHealth = Math.max(0, state.aiHealth - dmg);
-        state.history.push(narrative !== move ? narrative : `AI took ${dmg} damage!`);
+        const { damage: baseDamage, narrative } = await proxy.evaluateUserMove(sanitizedMove, state.history);
+        const totalDamage = Math.max(1, Math.min(30, Number(baseDamage || 0) + bonusDamage));
+
+        this.appendHistory(state, `You used: ${sanitizedMove}`);
+        state.aiHealth = Math.max(0, state.aiHealth - totalDamage);
+        this.appendHistory(state, narrative !== sanitizedMove ? narrative : `AI took ${totalDamage} damage!`);
 
         if (state.aiHealth === 0) {
             state.gameOver = true;
-            state.history.push("VICTORY!");
-            await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+            state.turn = 'user';
+            state.wins = (state.wins || 0) + 1;
+            state.credits += WIN_CREDIT_REWARD;
+            this.appendHistory(state, `VICTORY! +${WIN_CREDIT_REWARD} credits awarded.`);
+            await this.saveState(userId, state);
 
-            // Leaderboard Sync
             const lb = new Leaderboard(this.context, 'game4_duel');
             let username = 'Cyber Duelist';
             try {
@@ -95,7 +155,6 @@ export class DuelServer {
                 if (user) username = user.username;
             } catch (e) { }
 
-            // Increment win count in leaderboard ZSET, then sync profile metadata.
             const newScore = await this.context.redis.zIncrBy(lb.getLeaderboardKey(), userId, 1);
             await lb.submitScore(userId, username, newScore);
 
@@ -103,30 +162,32 @@ export class DuelServer {
         }
 
         state.turn = 'ai';
-        await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+        await this.saveState(userId, state);
 
-        // 2. Schedule AI Turn (or process immediately if light)
-        // For Hackathon MVP, we process immediately to avoid complicated callbacks for now
         return await this.processAITurn(userId, state);
     }
 
     async processAITurn(userId: string, state: DuelState): Promise<DuelState> {
-        // Fetch AI Move via Proxy (Gemini 2.0)
+        if (state.gameOver) return state;
         const proxy = new ServiceProxy(this.context);
-        const { move, damage } = await proxy.generateAiMove(state.history);
+        const { move, damage } = await proxy.generateAiMove(state.history.slice(-8));
+        const safeDamage = Math.max(0, Math.min(20, Number(damage || 0)));
 
-        state.history.push(`AI used: ${move}`);
-        state.userHealth = Math.max(0, state.userHealth - damage);
-        state.history.push(`You took ${damage} damage!`);
+        state.turn = 'ai';
+        this.appendHistory(state, `AI used: ${move}`);
+        state.userHealth = Math.max(0, state.userHealth - safeDamage);
+        this.appendHistory(state, `You took ${safeDamage} damage!`);
 
         if (state.userHealth === 0) {
             state.gameOver = true;
-            state.history.push("DEFEAT...");
+            state.turn = 'user';
+            state.credits += LOSS_CREDIT_REWARD;
+            this.appendHistory(state, `DEFEAT... +${LOSS_CREDIT_REWARD} recovery credits granted.`);
         } else {
             state.turn = 'user';
         }
 
-        await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+        await this.saveState(userId, state);
         return state;
     }
 

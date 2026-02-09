@@ -135,6 +135,7 @@ Devvit.addCustomPostType({
                     <vstack alignment="center middle">
                         <text size="xxlarge" weight="bold" color={Theme.colors.danger}>OUTSMARTED</text>
                         <text size="small" color={Theme.colors.textDim}>Duel of Minds — You vs AI</text>
+                        <text size="xsmall" color={Theme.colors.textDim}>How to play: execute one move per turn, spend credits for stronger attacks, survive to win.</text>
                     </vstack>
 
                     <spacer size="small" />
@@ -143,6 +144,7 @@ Devvit.addCustomPostType({
                     <vstack padding="small" cornerRadius="small" backgroundColor={Theme.narrative.noir} border="thin" borderColor={Theme.colors.danger} alignment="center middle">
                         <text size="medium" weight="bold" color={Theme.colors.danger}>⚡ DUEL PROTOCOL INITIATED ⚡</text>
                         <text size="small" color={Theme.colors.textDim}>Opponent locked. Combat imminent.</text>
+                        <text size="small" color={Theme.colors.warning}>Starting Credits: {Math.floor(state.credits)}</text>
                     </vstack>
 
                     <spacer size="small" />
@@ -232,6 +234,10 @@ Devvit.addCustomPostType({
                             </vstack>
                         </vstack>
                     </hstack>
+                    <hstack alignment="space-between middle" padding="small">
+                        <text size="small" color={Theme.colors.warning}>Credits: {Math.floor(state.credits)}</text>
+                        <text size="small" color={Theme.colors.textDim}>Overclock costs 10 credits (+2 damage)</text>
+                    </hstack>
 
                     <spacer size="small" />
 
@@ -269,6 +275,7 @@ Devvit.addCustomPostType({
                             <text color={state.userHealth > 0 ? Theme.colors.success : Theme.colors.danger} weight="bold" size="large">
                                 {state.userHealth > 0 ? '🏆 VICTORY!' : '💀 DEFEAT...'}
                             </text>
+                            <text size="small" color={Theme.colors.textDim}>Career Wins: {state.wins || 0} | Credits: {Math.floor(state.credits)}</text>
                             <hstack gap="small">
                                 <button appearance="primary" onPress={onReset}>NEW OPPONENT</button>
                                 <button appearance="secondary" size="small" onPress={async () => {

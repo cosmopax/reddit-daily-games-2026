@@ -20,5 +20,14 @@ An idle strategy game for Reddit where you build an investment portfolio and wat
 devvit settings set GEMINI_API_KEY "your-key-here"
 ```
 
+## Quick Verify
+```bash
+npx devvit whoami
+npx devvit upload
+```
+- Use subreddit menu action: **Create Get Rich Lazy Post**
+- Daily loop check: one Vic/Sal choice per UTC day
+- Publish note: `npx devvit publish` requires Terms + Privacy links in app developer settings
+
 ## Part of the 2026 Reddit Daily Games Hackathon
 Built with Devvit by cosmopax

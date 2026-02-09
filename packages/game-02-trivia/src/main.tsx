@@ -2,6 +2,20 @@ import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
 import { Theme, ServiceProxy, Leaderboard, LeaderboardUI, NarrativeHeader, HIVE_BRAIN, CharacterPanel } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
+const DAILY_ACTIVE_DATE_KEY = 'trivia:active_date';
+const TREND_A_PREFIX = 'daily_trend_a:';
+const TREND_B_PREFIX = 'daily_trend_b:';
+const PARTICIPANTS_PREFIX = 'daily_participants:';
+
+const getUtcDateKey = (date: Date = new Date()): string => {
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(date.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
+const keyed = (prefix: string, dateKey: string): string => `${prefix}${dateKey}`;
+
 Devvit.configure({
     redditAPI: true,
     http: true,
@@ -11,14 +25,34 @@ Devvit.configure({
 Devvit.addSchedulerJob({
     name: 'daily_reset',
     onRun: async (_event, context) => {
-        console.log('[daily_reset] Ingesting Daily Trends...');
+        const dateKey = getUtcDateKey();
+        const trendAKey = keyed(TREND_A_PREFIX, dateKey);
+        const trendBKey = keyed(TREND_B_PREFIX, dateKey);
+        const participantsKey = keyed(PARTICIPANTS_PREFIX, dateKey);
+        console.log(`[daily_reset] Ingesting trends for ${dateKey}...`);
         try {
+            const active = await context.redis.get(DAILY_ACTIVE_DATE_KEY);
+            if (active === dateKey) {
+                const existingA = await context.redis.get(trendAKey);
+                const existingB = await context.redis.get(trendBKey);
+                if (existingA && existingB) {
+                    console.log(`[daily_reset] Already initialized for ${dateKey}, skipping.`);
+                    return;
+                }
+            }
+
             const proxy = new ServiceProxy(context);
             const trends = await proxy.fetchDailyTrends(2);
+            await context.redis.set(trendAKey, JSON.stringify(trends[0]));
+            await context.redis.set(trendBKey, JSON.stringify(trends[1]));
+            await context.redis.del(participantsKey);
+            await context.redis.set(DAILY_ACTIVE_DATE_KEY, dateKey);
+
+            // Compatibility keys consumed by earlier builds/tools.
             await context.redis.set('daily_trend_a', JSON.stringify(trends[0]));
             await context.redis.set('daily_trend_b', JSON.stringify(trends[1]));
-            await context.redis.del('daily_participants');
-            console.log(`[daily_reset] Stored trends: "${trends[0].query}" vs "${trends[1].query}"`);
+
+            console.log(`[daily_reset] Stored ${dateKey}: "${trends[0].query}" vs "${trends[1].query}"`);
         } catch (e) {
             console.error('[daily_reset] Failed to ingest trends:', e);
         }
@@ -68,13 +102,17 @@ Devvit.addCustomPostType({
     render: (context) => {
         const proxy = new ServiceProxy(context);
         const [userId] = useState(() => context.userId || 'anon');
-        const [hasPlayed, setHasPlayed] = useState(false);
         const [result, setResult] = useState<'correct' | 'wrong' | null>(null);
 
         const { data, loading } = useAsync(async () => {
-            const played = await context.redis.hGet('daily_participants', userId);
-            const rawA = await context.redis.get('daily_trend_a');
-            const rawB = await context.redis.get('daily_trend_b');
+            const activeDate = (await context.redis.get(DAILY_ACTIVE_DATE_KEY)) || getUtcDateKey();
+            const trendAKey = keyed(TREND_A_PREFIX, activeDate);
+            const trendBKey = keyed(TREND_B_PREFIX, activeDate);
+            const participantsKey = keyed(PARTICIPANTS_PREFIX, activeDate);
+
+            const played = await context.redis.hGet(participantsKey, userId);
+            const rawA = await context.redis.get(trendAKey);
+            const rawB = await context.redis.get(trendBKey);
             let tA, tB;
             if (rawA && rawB) {
                 tA = JSON.parse(rawA);
@@ -83,24 +121,30 @@ Devvit.addCustomPostType({
                 const fresh = await proxy.fetchDailyTrends(2);
                 tA = fresh[0];
                 tB = fresh[1];
+                await context.redis.set(trendAKey, JSON.stringify(tA));
+                await context.redis.set(trendBKey, JSON.stringify(tB));
+                await context.redis.set(DAILY_ACTIVE_DATE_KEY, activeDate);
             }
             // Also fetch user stats for display
             const statsRaw = await context.redis.get(`user:${userId}:stats`);
             const stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalWins: 0, maxStreak: 0 };
-            return { played: !!played, trends: { a: tA, b: tB }, stats };
+            return { played: !!played, trends: { a: tA, b: tB }, stats, activeDate, participantsKey };
         });
 
         const onGuess = async (choice: 'higher' | 'lower') => {
             if (!data?.trends) return;
+            if (data.played) {
+                context.ui.showToast('You already synced for today.');
+                return;
+            }
             const { a, b } = data.trends;
             const isHigher = b.traffic > a.traffic;
             const win = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
 
             setResult(win ? 'correct' : 'wrong');
-            setHasPlayed(true);
 
             // Record participation for today
-            await context.redis.hSet('daily_participants', { [userId]: win ? '1' : '0' });
+            await context.redis.hSet(data.participantsKey, { [userId]: win ? '1' : '0' });
 
             // Update Persistent Stats (Streak & Leaderboard)
             const statsKey = `user:${userId}:stats`;
@@ -188,6 +232,9 @@ Devvit.addCustomPostType({
                     accentColor={HIVE_BRAIN.accentColor}
                     onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />
+                <hstack alignment="center middle" padding="xsmall">
+                    <text size="xsmall" color={Theme.colors.textDim}>How to play: compare two trends, lock one guess per UTC day, build streaks.</text>
+                </hstack>
 
                 {/* Hive Brain Intro */}
                 <CharacterPanel
@@ -230,7 +277,7 @@ Devvit.addCustomPostType({
                                 <spacer size="small" />
                                 <text size="small" color={HIVE_BRAIN.accentColor}>🔥 Streak: {data.stats?.streak || 0}</text>
                                 <text size="small" color={Theme.colors.textDim}>Syncs: {data.stats?.totalWins || 0} | Best: {data.stats?.maxStreak || 0}</text>
-                                <text size="small" color={Theme.colors.textDim}>Next signal: tomorrow</text>
+                                <text size="small" color={Theme.colors.textDim}>Signal date: {data.activeDate} (UTC)</text>
                             </vstack>
                         ) : (
                             <vstack gap="medium" alignment="center middle">

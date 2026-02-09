@@ -22,6 +22,27 @@
   - `findings.md`
   - `progress.md`
 
+### Phase 3: Judge/Reviewer Readiness
+- **Status:** completed
+- **Started:** 2026-02-09
+- Actions taken:
+  - Polished all 4 package READMEs for judge-facing clarity (highlighting Daily Loop, AI, and robustness).
+  - Drafted `reviewer_responses.md` for Devvit review follow-ups.
+  - Validated demo script/checklist consistency.
+- Files created/modified:
+  - `packages/game-01-strategy/README.md`
+  - `packages/game-02-trivia/README.md`
+  - `packages/game-03-meme/README.md`
+  - `packages/game-04-duel/README.md`
+  - `reviewer_responses.md`
+
+## Risks & Flagged Items
+| Item | Severity | Mitigation |
+|------|----------|------------|
+| T&C / Privacy URLs | High | **CRITICAL:** `devvit publish` requires these links in developer settings. Ensure these are set for all 4 apps. |
+| API Rate Limits | Medium | ServiceProxy fallbacks implemented, but sustained heavy load might degrade UX to "Static/Placeholder" mode. |
+| AI Content Edge Cases | Low | System prompts updated for safety, but community reporting is the primary moderator path. |
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|

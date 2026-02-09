@@ -17,7 +17,7 @@ This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**,
 
 ## 🏗 Architecture
 
-*   **Monorepo**: Managed via `npm workspaces`.
+*   **Monorepo**: Multi-package repository under `packages/` with a shared kernel package.
 *   **Shared Kernel**: `packages/shared` contains:
     *   `RedisWrapper`: Optimized storage (bit-packing).
     *   `ServiceProxy`: Centralized external API handling (Compliance).
@@ -26,25 +26,57 @@ This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**,
 
 ## 🚀 Getting Started
 
-1.  **Install Dependencies**:
+1.  **Install dependencies per package** (there is no root `package.json`):
     ```bash
-    npm install
+    cd packages/shared && npm install
+    cd ../game-01-strategy && npm install
+    cd ../game-02-trivia && npm install
+    cd ../game-03-meme && npm install
+    cd ../game-04-duel && npm install
     ```
 
-2.  **Run a Game (Simulated)**:
+2.  **Run canonical smoke checks from repo root**:
+    ```bash
+    bash scripts/smoke_all_games.sh
+    ```
+
+3.  **Upload a game from its package directory**:
     ```bash
     cd packages/game-01-strategy
+    devvit whoami
     devvit upload
     ```
+    Repeat per game package as needed.
 
-3.  **Deployment**:
-    *   Push to branch `main`.
-    *   CI/CD will handle Devvit publishing (Future State).
+## 🔐 API Keys Runbook (Current Workaround)
+
+Because of a current Devvit CLI limitation for app-scoped secret writes, this repo uses installation-scoped settings in code (`scope: SettingScope.Installation`, `isSecret: false`).
+
+Operational implications:
+- Keys are visible in subreddit app settings UI to subreddit moderators/admins.
+- Treat keys as lower-trust and rotate regularly.
+
+Set keys (run inside each target game package):
+```bash
+devvit settings set GEMINI_API_KEY "..."
+devvit settings set SERPAPI_KEY "..."
+devvit settings set HUGGINGFACE_TOKEN "..."
+devvit settings set REPLICATE_API_TOKEN "..."
+```
+
+Rotation procedure:
+1. Generate new provider key(s) in Gemini/SerpApi/Hugging Face/Replicate.
+2. Update installation settings with `devvit settings set ...` in each affected game install.
+3. Validate with:
+   - `bash scripts/smoke_all_games.sh`
+   - `scripts/verify_api_dryrun.ts` (with env vars when testing locally)
+4. Revoke old provider key(s) only after successful validation.
 
 ## 🛠 Next Steps (Handover)
 
-*   **API Integration**: See `prompts/api_integration_mission.md`.
-*   **UI Polish**: `shared` theme is implemented. Extend to Games 2 & 3.
+*   **Latest implementation status**: `CODEX_HANDOVER_4.md`.
+*   **Coordination log**: `cooperation_documentation.md`.
+*   **Cross-game typecheck gate**: `scripts/smoke_all_games.sh`.
 
 ---
 *Created by Antigravity (Google DeepMind) for Reddit Hackathon 2026*

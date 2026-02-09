@@ -1,29 +1,30 @@
 # Findings & Decisions
 
 ## Requirements
-- Revert all edits I made in this older workspace.
-- Read documentation and relevant files.
-- Build a detailed/refined plan to progress all 4 games.
-- Incorporate a Gemini CLI planning/synthesis pass.
+- Verify current project baseline and smoke health.
+- Align stale status/docs with the latest authoritative handover.
+- Document API key operations risk and rotation process.
 
 ## Research Findings
-- Revert completed for `.agents/skills/coop-log/SKILL.md` and `.agents/skills/devvit-smoke/SKILL.md`.
-- Global Codex config restored from backup (`/Users/cosmopax/.codex/config.toml.bak-20260207`).
-- Latest authoritative handover appears to be `CODEX_HANDOVER_3.md` (dated 2026-02-06).
+- Latest authoritative handover is `CODEX_HANDOVER_4.md` (dated 2026-02-07).
+- `bash scripts/smoke_all_games.sh` currently passes for shared + all four games.
+- Root README previously assumed `npm install` at repo root, but no root package manifest exists.
+- Installation-scoped settings workaround remains active for API keys (`isSecret: false`).
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Analyze docs + package scripts before planning | Plan quality depends on present codebase status, not assumptions |
-| Use Gemini as synthesis layer, not source of truth | Repo artifacts remain authoritative |
+| Treat `CODEX_HANDOVER_4.md` as status source of truth | Matches project agent guidance in AGENTS.md |
+| Document per-package install/upload flow in root README | Prevent incorrect root install instructions |
+| Add explicit API key risk + rotation runbook | Reduce ops/security ambiguity while workaround is required |
 
 ## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
-| `planning-with-files` referenced template path did not exist | Used existing templates under `assets/templates` and continued |
+| none | - |
 
 ## Resources
-- `CODEX_HANDOVER_3.md`
+- `CODEX_HANDOVER_4.md`
 - `cooperation_documentation.md`
 - `README.md`
 - `docs/ARCHITECTURE.md`

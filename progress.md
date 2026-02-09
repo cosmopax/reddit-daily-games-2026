@@ -1,47 +1,42 @@
 # Progress Log
 
-## Session: 2026-02-07
+## Session: 2026-02-09
 
-### Phase 1: Revert + Baseline Recovery
-- **Status:** in_progress
-- **Started:** 2026-02-07 10:42 UTC
+### Phase 1: Baseline Verification
+- **Status:** completed
+- **Started:** 2026-02-09
 - Actions taken:
-  - Audited repo changes and global config state.
-  - Reverted the two modified SKILL files in this repo.
-  - Restored global Codex config from backup to undo malformed MCP section.
-  - Initialized `task_plan.md`, `findings.md`, and `progress.md` for persistent planning.
+  - Verified repository status and branch state.
+  - Ran canonical smoke checks across shared + all four games.
 - Files created/modified:
-  - `cooperation_documentation.md` (intent entry appended)
-  - `task_plan.md` (created)
-  - `findings.md` (created)
-  - `progress.md` (created)
+  - none
 
-### Phase 2: Repository Discovery
-- **Status:** pending
+### Phase 2: Status/Docs Alignment
+- **Status:** completed
 - Actions taken:
-  -
+  - Updated root README setup instructions to match actual repo structure (no root package manifest).
+  - Added API key operations runbook and rotation guidance.
+  - Synced project status references to `CODEX_HANDOVER_4.md`.
 - Files created/modified:
-  -
+  - `README.md`
+  - `findings.md`
+  - `progress.md`
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
-| Revert check | `git status --short` | Only planning/log files changed | Matched | PASS |
-| Config check | `nl -ba ~/.codex/config.toml` | Valid `[mcp_servers.github]` block restored | Matched | PASS |
+| Branch check | `git status --short --branch` | Clean `main` and tracking info visible | `## main...origin/main` | PASS |
+| Smoke gate | `bash scripts/smoke_all_games.sh` | shared + all games typecheck pass | `smoke checks complete` | PASS |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
-| 2026-02-07 10:40 UTC | Missing planning template path | 1 | Switched to `assets/templates` path |
+| none | - | - | - |
 
-## 5-Question Reboot Check
-| Question | Answer |
-|----------|--------|
-| Where am I? | Phase 1 closing, moving to Phase 2 discovery |
-| Where am I going? | Docs/code discovery, gap analysis, Gemini synthesis, final plan |
-| What's the goal? | Refined execution-ready 4-game development plan |
-| What have I learned? | Revert is complete; latest handover is Feb 6 update |
-| What have I done? | Reverted prior edits and initialized planning artifacts |
+## Current State Snapshot
+- Latest authoritative handover: `CODEX_HANDOVER_4.md` (2026-02-07).
+- Canonical smoke checks pass in current workspace.
+- Docs now reflect per-package install/upload workflow and current API-key workaround.
 
 ---
 *Update after completing each phase or encountering errors*

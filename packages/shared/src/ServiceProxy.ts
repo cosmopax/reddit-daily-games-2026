@@ -114,7 +114,7 @@ export class ServiceProxy {
                         "Prefer": "wait"
                     },
                     body: JSON.stringify({ input: { prompt, go_fast: true, megapixels: "1" } })
-                }, 10000);
+                }, 25000);
 
                 if (response.status === 402) {
                     console.warn("Replicate billing exhausted.");
@@ -145,7 +145,7 @@ export class ServiceProxy {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ inputs: prompt })
-                }, 10000);
+                }, 25000);
 
                 if (response.ok) {
                     // HF returns binary image data - convert to data URI

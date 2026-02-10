@@ -15,7 +15,7 @@ Devvit.addSettings([
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
 ]);
@@ -58,6 +58,7 @@ Devvit.addCustomPostType({
     render: (context) => {
         const server = new GameStrategyServer(context);
         const [userId] = useState(() => context.userId || 'test-user');
+        const [showSplash, setShowSplash] = useState(true);
 
         // Screen navigation
         const [screen, setScreen] = useState<Screen>('intro');
@@ -131,6 +132,11 @@ Devvit.addCustomPostType({
             setLeaderboardData(data);
             setLbLoading(false);
         };
+
+        // ─── SPLASH SCREEN ───────────────────────
+        if (showSplash) {
+            return <SplashScreen gameKey="strategy" onDone={() => setShowSplash(false)} />;
+        }
 
         // ─── LOADING ─────────────────────────────
         if (loading && !state) {

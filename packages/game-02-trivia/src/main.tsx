@@ -31,14 +31,14 @@ Devvit.addSettings([
         name: 'SERPAPI_KEY',
         label: 'SerpApi Key (Google Trends)',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
     {
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
 ]);
@@ -68,6 +68,7 @@ Devvit.addCustomPostType({
     render: (context) => {
         const proxy = new ServiceProxy(context);
         const [userId] = useState(() => context.userId || 'anon');
+        const [showSplash, setShowSplash] = useState(true);
         const [hasPlayed, setHasPlayed] = useState(false);
         const [result, setResult] = useState<'correct' | 'wrong' | null>(null);
 
@@ -144,6 +145,11 @@ Devvit.addCustomPostType({
 
             await context.redis.set(statsKey, JSON.stringify(stats));
         };
+
+        // ─── SPLASH SCREEN ───────────────────────
+        if (showSplash) {
+            return <SplashScreen gameKey="trivia" onDone={() => setShowSplash(false)} />;
+        }
 
         if (loading) {
             return (

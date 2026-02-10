@@ -1,7 +1,7 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
 import { DuelServer, DuelState } from './DuelServer';
-import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, SplashScreen } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
@@ -14,7 +14,7 @@ Devvit.addSettings([
         name: 'GEMINI_API_KEY',
         label: 'Google Gemini API Key',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
 ]);
@@ -44,6 +44,7 @@ Devvit.addCustomPostType({
     render: (context) => {
         const server = new DuelServer(context as any);
         const [userId] = useState(() => context.userId || 'test-user');
+        const [showSplash, setShowSplash] = useState(true);
         const [localState, setLocalState] = useState<any>(null);
         const [processing, setProcessing] = useState(false);
 
@@ -89,6 +90,11 @@ Devvit.addCustomPostType({
             setLocalState({ state: newState });
             setProcessing(false);
         };
+
+        // ─── SPLASH SCREEN ───────────────────────
+        if (showSplash) {
+            return <SplashScreen gameKey="duel" onDone={() => setShowSplash(false)} />;
+        }
 
         // ─── LOADING ───────────────────
         if (loading && !state) {

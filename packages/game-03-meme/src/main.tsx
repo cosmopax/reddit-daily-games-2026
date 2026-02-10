@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, useForm, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
-import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, MEME_LORD, CharacterPanel } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, MEME_LORD, CharacterPanel, SplashScreen } from 'shared';
 import { MemeQueue } from './MemeQueue';
 
 Devvit.configure({
@@ -23,14 +23,14 @@ Devvit.addSettings([
         name: 'HUGGINGFACE_TOKEN',
         label: 'Hugging Face API Token',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
     {
         name: 'REPLICATE_API_TOKEN',
         label: 'Replicate API Token (Flux.1)',
         type: 'string',
-        isSecret: false,
+        isSecret: true,
         scope: SettingScope.Installation,
     },
 ]);
@@ -58,6 +58,7 @@ Devvit.addCustomPostType({
     name: 'Meme Wars',
     height: 'tall',
     render: (context) => {
+        const [showSplash, setShowSplash] = useState(true);
         const [status, setStatus] = useState<string>('Ready to create');
         const queue = new MemeQueue(context);
 
@@ -84,15 +85,16 @@ Devvit.addCustomPostType({
                 }
                 setStatus('⚡ Forging your meme...');
                 const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
-                // Trigger the scheduler to process the queue
+                // Trigger the scheduler to process the queue (with fallback timing)
                 try {
                     await context.scheduler.runJob({ name: 'process_queue', runAt: new Date(Date.now() + 2000) });
                 } catch (e) {
                     console.error('Failed to schedule process_queue:', e);
+                    setStatus('Queued but scheduler failed — tap 🔄 to check later');
                 }
                 setLastSubmitTime(Date.now());
                 setMySubmissions(prev => [...prev, values.prompt!]);
-                setStatus(`Queued! Generating image... tap 🔄 in ~30s`);
+                setStatus(`Queued (${jobId})! AI is generating... tap 🔄 in ~30s`);
             }
         );
 
@@ -151,6 +153,11 @@ Devvit.addCustomPostType({
             setLeaderboardData(data);
             setLbLoading(false);
         };
+
+        // ─── SPLASH SCREEN ───────────────────────
+        if (showSplash) {
+            return <SplashScreen gameKey="meme" onDone={() => setShowSplash(false)} />;
+        }
 
         if (showLeaderboard) {
             return (

@@ -143,3 +143,13 @@
 
 ### [2026-02-07 10:42] - Environment Repair Revert + 4-Game Planning (Agent: Codex)
 - **Intent:** Revert unintended edits made in this old workspace (`.agents/skills/*` and prior global Codex MCP config touch), validate clean state, then produce a refined cross-game development plan informed by repo docs/code plus a Gemini CLI planning pass.
+
+### [2026-02-10 01:30] - Root Subproject Pointer Sync (Agent: Codex)
+- **Intent:** Resolve root checkout Source Control noise by aligning tracked subproject pointer with the latest committed `codex/solo-completion` worktree state.
+- **Outcome:**
+  - Updated tracked subproject pointer `.worktrees/codex-solo-completion` from `f669ffe` to `105779d`.
+  - Preserved worktree branch state and remote tracking for `codex/solo-completion`.
+  - No runtime/source code files changed.
+- **Commands:** `git status --short --branch`; `git diff -- .worktrees/codex-solo-completion`; `git -C .worktrees/codex-solo-completion show --name-only --oneline -n 1 105779d`; `date '+%Y-%m-%d %H:%M'`.
+- **Tests:** None (metadata-only root pointer sync; no runtime changes).
+- **Git/Worktree:** Root checkout on `main`; referenced worktree `./.worktrees/codex-solo-completion` on branch `codex/solo-completion`.

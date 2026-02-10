@@ -232,7 +232,8 @@ export class GameStrategyServer {
     // ═══════════════════════════════════════════
 
     /**
-     * Get today's scenario. Tries Redis cache → Gemini generation → fallback.
+     * Get today's scenario. Tries Redis cache → fallback (instant).
+     * Gemini generation is too slow for init — use pre-written scenarios.
      */
     async getDailyScenario(): Promise<DailyScenario> {
         // Check Redis for cached scenario
@@ -243,19 +244,7 @@ export class GameStrategyServer {
             } catch (e) { /* corrupted, regenerate */ }
         }
 
-        // Try Gemini generation
-        const generated = await this.generateDailyScenario();
-        if (generated) {
-            // Cache with ~25 hour TTL (in ms for redis expiry)
-            await this.context.redis.set('daily_scenario', JSON.stringify(generated));
-            // Set expiration (25 hours)
-            try {
-                await (this.context.redis as any).expire('daily_scenario', 90000);
-            } catch (e) { /* expire not available, scenario persists until overwritten */ }
-            return generated;
-        }
-
-        // Fallback to pre-written scenarios
+        // Use fallback immediately — never block init with API calls
         const recentIds: string[] = [];
         try {
             const recentRaw = await this.context.redis.get('recent_scenario_ids');
@@ -330,13 +319,17 @@ RULES for multiplierRange:
 
         try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
+            const fetchPromise = fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }]
-                })
+                }),
             });
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Gemini timeout')), 8000)
+            );
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
 
             if (response.ok) {
                 const data: any = await response.json();

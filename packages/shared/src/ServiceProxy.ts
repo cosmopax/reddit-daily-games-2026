@@ -4,6 +4,16 @@ export interface ServiceResponse<T> {
     error?: string;
 }
 
+/** Fetch with Promise.race timeout (default 8s) to prevent Devvit 30s hard-kill loops.
+ *  Uses Promise.race instead of AbortController for Devvit runtime compatibility. */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 8000): Promise<Response> {
+    const fetchPromise = fetch(url, options);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Fetch timeout after ${timeoutMs}ms`)), timeoutMs)
+    );
+    return Promise.race([fetchPromise, timeoutPromise]);
+}
+
 export class ServiceProxy {
     context: any;
 
@@ -34,7 +44,7 @@ export class ServiceProxy {
 
         try {
             const url = `https://serpapi.com/search.json?engine=google_trends_trending_now&geo=US&api_key=${apiKey}`;
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
 
             if (!response.ok) {
                 throw new Error(`SerpApi HTTP ${response.status}`);
@@ -96,7 +106,7 @@ export class ServiceProxy {
         if (replicateKey) {
             try {
                 const url = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
-                const response = await fetch(url, {
+                const response = await fetchWithTimeout(url, {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${replicateKey}`,
@@ -104,7 +114,7 @@ export class ServiceProxy {
                         "Prefer": "wait"
                     },
                     body: JSON.stringify({ input: { prompt, go_fast: true, megapixels: "1" } })
-                });
+                }, 10000);
 
                 if (response.status === 402) {
                     console.warn("Replicate billing exhausted.");
@@ -128,14 +138,14 @@ export class ServiceProxy {
             try {
                 const model = "black-forest-labs/FLUX.1-schnell";
                 const url = `https://router.huggingface.co/hf-inference/models/${model}`;
-                const response = await fetch(url, {
+                const response = await fetchWithTimeout(url, {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${hfKey}`,
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ inputs: prompt })
-                });
+                }, 10000);
 
                 if (response.ok) {
                     // HF returns binary image data - convert to data URI
@@ -177,7 +187,7 @@ Reply with ONLY valid JSON (no markdown):
 
 Be creative, thematic, and intimidating. Vary your attacks.`;
 
-                const response = await fetch(url, {
+                const response = await fetchWithTimeout(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -226,7 +236,7 @@ Rate the attack's effectiveness and describe the impact. Reply with ONLY valid J
 
 Creative/unique attacks should deal more damage. Generic attacks deal less. Range: 1-25.`;
 
-            const response = await fetch(url, {
+            const response = await fetchWithTimeout(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

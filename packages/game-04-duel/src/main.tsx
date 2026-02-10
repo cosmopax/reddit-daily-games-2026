@@ -1,7 +1,7 @@
-import { Devvit, useState, useAsync, useForm, SettingScope } from '@devvit/public-api';
+import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
 import { DuelServer, DuelState } from './DuelServer';
-import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader, getValkyrieProfile } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI, NarrativeHeader } from 'shared';
 
 Devvit.configure({
     redditAPI: true,
@@ -9,7 +9,6 @@ Devvit.configure({
     redis: true,
 });
 
-// App settings for API keys
 Devvit.addSettings([
     {
         name: 'GEMINI_API_KEY',
@@ -21,17 +20,17 @@ Devvit.addSettings([
 ]);
 
 Devvit.addMenuItem({
-    label: 'Create AI Duel Post',
+    label: 'Create Duel of Minds Post',
     location: 'subreddit',
     onPress: async (_event, context) => {
         const sub = await context.reddit.getCurrentSubreddit();
         await context.reddit.submitPost({
-            title: '⚔️ Outsmarted — Battle the Cyber-Valkyries!',
+            title: '🧠 Duel of Minds — 1v1 Trivia vs AI!',
             subredditName: sub.name,
             preview: (
                 <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.danger} size="xlarge" weight="bold">DUEL PROTOCOL INITIATING...</text>
-                    <text color={Theme.colors.textDim} size="small">Scanning for opponents...</text>
+                    <text color="#00D4FF" size="xlarge" weight="bold">DUEL OF MINDS</text>
+                    <text color={Theme.colors.textDim} size="small">Loading trivia...</text>
                 </vstack>
             ),
         });
@@ -39,48 +38,26 @@ Devvit.addMenuItem({
     },
 });
 
-type DuelScreen = 'intro' | 'battle' | 'leaderboard';
-
 Devvit.addCustomPostType({
     name: 'AI Duel',
     height: 'tall',
     render: (context) => {
         const server = new DuelServer(context as any);
         const [userId] = useState(() => context.userId || 'test-user');
-        const [processing, setProcessing] = useState(false);
-        const [screen, setScreen] = useState<DuelScreen>('intro');
-
-        const { data: initialData, loading } = useAsync<any>(async () => {
-            const state = await server.getDuelState(userId);
-            return { state } as any;
-        });
         const [localState, setLocalState] = useState<any>(null);
-        const state: DuelState | null = localState?.state || initialData?.state;
+        const [processing, setProcessing] = useState(false);
 
-        const attackForm = useForm(
-            {
-                fields: [{ type: 'string' as const, name: 'move', label: 'Your Attack', placeholder: 'Quantum disruption blast...' }],
-                title: 'Execute Move',
-                acceptLabel: 'ATTACK!'
-            },
-            async (values) => {
-                if (!values.move || !state) return;
-                setProcessing(true);
-                const newState = await server.submitMove(userId, values.move);
-                setLocalState({ state: newState });
-                setProcessing(false);
-            }
-        );
-
-        const onReset = async () => {
-            const newState = await server.resetGame(userId);
-            setLocalState({ state: newState });
-            setScreen('intro'); // Show intro for new opponent
-        };
-
-        // Leaderboard
+        // Leaderboard hooks (before any early return)
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
         const [lbLoading, setLbLoading] = useState(false);
+
+        const { data: initialData, loading, error } = useAsync<any>(async () => {
+            const state = await server.getGameState(userId);
+            return { state } as any;
+        });
+
+        const state: DuelState | null = localState?.state || initialData?.state;
 
         const loadLeaderboard = async () => {
             setLbLoading(true);
@@ -90,205 +67,209 @@ Devvit.addCustomPostType({
             setLbLoading(false);
         };
 
+        const onAnswer = async (answerIndex: number) => {
+            if (!state || processing) return;
+            setProcessing(true);
+            const newState = await server.submitAnswer(userId, answerIndex);
+            setLocalState({ state: newState });
+            setProcessing(false);
+        };
+
+        const onNext = async () => {
+            if (!state) return;
+            setProcessing(true);
+            const newState = await server.nextRound(userId);
+            setLocalState({ state: newState });
+            setProcessing(false);
+        };
+
+        const onReset = async () => {
+            setProcessing(true);
+            const newState = await server.resetGame(userId);
+            setLocalState({ state: newState });
+            setProcessing(false);
+        };
+
         // ─── LOADING ───────────────────
         if (loading && !state) {
             return (
                 <vstack alignment="center middle" height="100%" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.danger} size="large" weight="bold">OUTSMARTED</text>
+                    <text color="#00D4FF" size="large" weight="bold">DUEL OF MINDS</text>
                     <spacer size="small" />
-                    <text color={Theme.colors.textDim} size="small">Scanning for opponents...</text>
+                    <text color={Theme.colors.textDim} size="small">Loading trivia...</text>
                 </vstack>
             );
         }
         if (!state) {
             return (
                 <vstack alignment="center middle" height="100%" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.danger}>Error loading arena</text>
+                    <text color={Theme.colors.danger} size="large" weight="bold">Error</text>
+                    <text color={Theme.colors.textDim} size="small">{error?.message || 'Failed to load. Try refreshing.'}</text>
                 </vstack>
             );
         }
 
-        // Get Valkyrie profile for theming
-        const valkyrie = getValkyrieProfile(state.opponentRole || '');
-        const opponentPortrait = state.opponentPortrait || valkyrie.portraitUrl;
-
         // ─── LEADERBOARD ───────────────
-        if (screen === 'leaderboard') {
+        if (showLeaderboard) {
             return (
                 <LeaderboardUI
-                    title="VALKYRIE SLAYERS"
+                    title="TRIVIA CHAMPIONS"
                     entries={leaderboardData}
                     isLoading={lbLoading}
                     onRefresh={loadLeaderboard}
-                    onClose={() => setScreen('battle')}
+                    onClose={() => setShowLeaderboard(false)}
                     scoreLabel="wins"
                     currentUserId={userId}
                 />
             );
         }
 
-        // ─── INTRO SCREEN ──────────────
-        if (screen === 'intro') {
+        const accentColor = '#00D4FF';
+        const q = state.questions[state.currentRound];
+
+        // ─── GAME OVER ─────────────────
+        if (state.gameOver) {
+            const won = state.userScore > state.aiScore;
+            const tied = state.userScore === state.aiScore;
             return (
                 <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" alignment="center middle" gap="medium">
-                    {/* Title */}
-                    <vstack alignment="center middle">
-                        <text size="xxlarge" weight="bold" color={Theme.colors.danger}>OUTSMARTED</text>
-                        <text size="small" color={Theme.colors.textDim}>Duel of Minds — You vs AI</text>
-                    </vstack>
+                    <NarrativeHeader
+                        title="DUEL OF MINDS"
+                        subtitle="Final Results"
+                        accentColor={accentColor}
+                        onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
+                    />
 
-                    <spacer size="small" />
-
-                    {/* Duel Protocol Banner */}
-                    <vstack padding="small" cornerRadius="small" backgroundColor={Theme.narrative.noir} border="thin" borderColor={Theme.colors.danger} alignment="center middle">
-                        <text size="medium" weight="bold" color={Theme.colors.danger}>⚡ DUEL PROTOCOL INITIATED ⚡</text>
-                        <text size="small" color={Theme.colors.textDim}>Opponent locked. Combat imminent.</text>
-                    </vstack>
-
-                    <spacer size="small" />
-
-                    {/* Opponent Reveal */}
-                    <vstack
-                        padding="medium"
-                        cornerRadius="medium"
-                        backgroundColor={valkyrie.bgTint}
-                        border="thin"
-                        borderColor={valkyrie.accentColor}
-                        alignment="center middle"
-                        gap="small"
-                        width="100%"
-                    >
-                        <image
-                            url={opponentPortrait}
-                            imageWidth={80}
-                            imageHeight={80}
-                            resizeMode="cover"
-                        />
-                        <text size="large" weight="bold" color={valkyrie.accentColor}>
-                            {state.opponentName || valkyrie.name}
+                    <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger} alignment="center middle" gap="small" width="100%">
+                        <text size="xlarge" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
+                            {won ? 'YOU WIN!' : tied ? 'TIE GAME!' : 'AI WINS!'}
                         </text>
-                        <text size="small" color={Theme.colors.textDim}>{valkyrie.role}</text>
-                        <text size="small" color={Theme.colors.text} wrap alignment="center">
-                            "{valkyrie.tagline}"
-                        </text>
+                        <spacer size="small" />
+                        <hstack gap="large" alignment="center middle">
+                            <vstack alignment="center middle">
+                                <text size="small" color={Theme.colors.textDim}>You</text>
+                                <text size="xxlarge" weight="bold" color={Theme.colors.success}>{state.userScore}</text>
+                            </vstack>
+                            <text size="large" color={Theme.colors.textDim}>vs</text>
+                            <vstack alignment="center middle">
+                                <text size="small" color={Theme.colors.textDim}>AI</text>
+                                <text size="xxlarge" weight="bold" color={Theme.colors.danger}>{state.aiScore}</text>
+                            </vstack>
+                        </hstack>
+                        <text size="small" color={Theme.colors.textDim}>out of {state.totalRounds} questions</text>
                     </vstack>
 
-                    <spacer size="medium" />
-
-                    <button appearance="destructive" size="medium" onPress={() => setScreen('battle')}>
-                        ENGAGE COMBAT
-                    </button>
-
-                    <button appearance="plain" size="small" onPress={() => { setScreen('leaderboard'); loadLeaderboard(); }}>
-                        🏆 View Rankings
-                    </button>
+                    <hstack gap="small">
+                        <button appearance="primary" size="medium" onPress={onReset}>PLAY AGAIN</button>
+                        <button appearance="secondary" size="small" onPress={async () => {
+                            try {
+                                if (!context.postId) return;
+                                const result = won ? 'beat' : tied ? 'tied with' : 'lost to';
+                                await context.reddit.submitComment({
+                                    id: context.postId,
+                                    text: `I ${result} the AI ${state.userScore}-${state.aiScore} in Duel of Minds! Can you beat my score?`
+                                });
+                                context.ui.showToast('Shared!');
+                            } catch (e) { context.ui.showToast('Could not share'); }
+                        }}>Share</button>
+                    </hstack>
                 </vstack>
             );
         }
 
-        // ─── BATTLE SCREEN ─────────────
+        // ─── QUESTION SCREEN ────────────
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="small">
                 <NarrativeHeader
-                    title="OUTSMARTED"
-                    subtitle={`vs ${state.opponentName || 'GEMINI CORE'}`}
-                    accentColor={valkyrie.accentColor}
-                    onLeaderboard={() => { setScreen('leaderboard'); loadLeaderboard(); }}
+                    title="DUEL OF MINDS"
+                    subtitle={`Round ${state.currentRound + 1} of ${state.totalRounds}`}
+                    accentColor={accentColor}
+                    onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />
 
-                {/* Battle Arena */}
-                <vstack grow backgroundColor={Theme.colors.surface} cornerRadius="medium" padding="small" border="thin" borderColor={valkyrie.accentColor}>
-
-                    {/* HUD */}
-                    <hstack alignment="space-between middle" width="100%" padding="small">
-                        {/* Player HUD */}
-                        <vstack alignment="start">
-                            <text weight="bold" color={Theme.colors.secondary} size="small">COMMANDER</text>
-                            <text color={Theme.colors.success} size="xlarge" weight="bold">{state.userHealth} HP</text>
-                            <vstack width="100px" height="4px" backgroundColor="#333333" cornerRadius="small">
-                                <vstack width={`${state.userHealth}%`} height="100%" backgroundColor={Theme.colors.success} cornerRadius="small" />
-                            </vstack>
-                        </vstack>
-
-                        <text color={Theme.colors.warning} size="large" weight="bold">VS</text>
-
-                        {/* AI HUD with portrait */}
-                        <vstack alignment="end">
-                            <hstack gap="small" alignment="center middle">
-                                <vstack alignment="end">
-                                    <text weight="bold" color={valkyrie.accentColor} size="small">{state.opponentName || valkyrie.name}</text>
-                                    <text color={Theme.colors.textDim} size="xsmall">{valkyrie.role}</text>
-                                </vstack>
-                                <image
-                                    url={opponentPortrait}
-                                    imageWidth={32}
-                                    imageHeight={32}
-                                    resizeMode="cover"
-                                />
-                            </hstack>
-                            <text color={Theme.colors.danger} size="xlarge" weight="bold">{state.aiHealth} HP</text>
-                            <vstack width="100px" height="4px" backgroundColor="#333333" cornerRadius="small">
-                                <vstack width={`${state.aiHealth}%`} height="100%" backgroundColor={Theme.colors.danger} cornerRadius="small" />
-                            </vstack>
-                        </vstack>
+                {/* Score Bar */}
+                <hstack padding="small" backgroundColor={Theme.colors.surface} cornerRadius="small" alignment="space-between middle" width="100%">
+                    <hstack gap="small" alignment="center middle">
+                        <text size="small" color={Theme.colors.textDim}>You:</text>
+                        <text size="medium" weight="bold" color={Theme.colors.success}>{state.userScore}</text>
                     </hstack>
-
-                    <spacer size="small" />
-
-                    {/* Battle Log (Terminal Style) */}
-                    <vstack grow backgroundColor="#000000" cornerRadius="small" padding="small" gap="small">
-                        {state.history.slice(-8).map((log: string, i: number) => {
-                            // Color-code battle log entries
-                            const isUser = log.startsWith('You ') || log.includes('COMMANDER');
-                            const isAI = log.startsWith('AI ') || log.includes(state.opponentName || '');
-                            const isSystem = log.includes('Protocol') || log.includes('VICTORY') || log.includes('DEFEAT');
-                            const logColor = isSystem ? Theme.colors.warning
-                                : isUser ? Theme.colors.secondary
-                                : isAI ? valkyrie.accentColor
-                                : Theme.colors.text;
-
-                            return (
-                                <hstack key={`${i}`}>
-                                    <text color={isSystem ? Theme.colors.warning : Theme.narrative.terminalGreen} size="small">{'>'}</text>
-                                    <spacer size="small" />
-                                    <text color={logColor} size="small" wrap>{log}</text>
-                                </hstack>
-                            );
-                        })}
+                    <vstack alignment="center middle">
+                        <text size="xsmall" color={accentColor}>{q.category}</text>
                     </vstack>
+                    <hstack gap="small" alignment="center middle">
+                        <text size="small" color={Theme.colors.textDim}>AI:</text>
+                        <text size="medium" weight="bold" color={Theme.colors.danger}>{state.aiScore}</text>
+                    </hstack>
+                </hstack>
 
-                    <spacer size="small" />
+                <spacer size="small" />
 
-                    {/* Controls */}
-                    {!state.gameOver ? (
-                        <button appearance="primary" onPress={() => context.ui.showForm(attackForm)} disabled={state.gameOver || state.turn === 'ai' || processing}>
-                            {processing ? 'PROCESSING...' : state.turn === 'ai' ? 'AI THINKING...' : '⚔️ EXECUTE MOVE'}
-                        </button>
-                    ) : (
-                        <vstack padding="small" alignment="center middle" gap="small">
-                            <text color={state.userHealth > 0 ? Theme.colors.success : Theme.colors.danger} weight="bold" size="large">
-                                {state.userHealth > 0 ? '🏆 VICTORY!' : '💀 DEFEAT...'}
-                            </text>
-                            <hstack gap="small">
-                                <button appearance="primary" onPress={onReset}>NEW OPPONENT</button>
-                                <button appearance="secondary" size="small" onPress={async () => {
-                                    try {
-                                        const postId = context.postId;
-                                        if (!postId) return;
-                                        const outcome = state.userHealth > 0 ? 'defeated' : 'was bested by';
-                                        await context.reddit.submitComment({
-                                            id: postId,
-                                            text: `I ${outcome} ${state.opponentName || 'the Cyber-Valkyrie'} (${valkyrie.role}) in Outsmarted! Can you beat my score?`
-                                        });
-                                        context.ui.showToast('Shared to comments!');
-                                    } catch (e) {
-                                        context.ui.showToast('Could not share');
-                                    }
-                                }}>Share</button>
-                            </hstack>
-                        </vstack>
-                    )}
+                {/* Question */}
+                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} alignment="center middle">
+                    <text size="large" weight="bold" color={Theme.colors.text} wrap alignment="center">{q.question}</text>
                 </vstack>
+
+                <spacer size="small" />
+
+                {/* Answer Options */}
+                <vstack gap="small" grow>
+                    {q.options.map((option, i) => {
+                        let bgColor = Theme.colors.surface;
+                        let borderColor = Theme.colors.surfaceHighlight;
+                        let textColor = Theme.colors.text;
+
+                        if (state.showResult) {
+                            if (i === q.correctIndex) {
+                                bgColor = '#0A2A0A';
+                                borderColor = Theme.colors.success;
+                                textColor = Theme.colors.success;
+                            } else if (i === state.userAnswer && i !== q.correctIndex) {
+                                bgColor = '#2A0A0A';
+                                borderColor = Theme.colors.danger;
+                                textColor = Theme.colors.danger;
+                            }
+                        } else if (i === state.userAnswer) {
+                            borderColor = accentColor;
+                        }
+
+                        return (
+                            <hstack
+                                key={`opt-${i}`}
+                                padding="small"
+                                cornerRadius="small"
+                                backgroundColor={bgColor}
+                                border="thin"
+                                borderColor={borderColor}
+                                alignment="start middle"
+                                gap="small"
+                                onPress={!state.showResult && !processing ? () => onAnswer(i) : undefined}
+                            >
+                                <vstack width="24px" height="24px" cornerRadius="full" backgroundColor={borderColor} alignment="center middle">
+                                    <text size="small" weight="bold" color="#FFFFFF">{String.fromCharCode(65 + i)}</text>
+                                </vstack>
+                                <text size="medium" color={textColor} wrap>{option}</text>
+                                {state.showResult && i === state.aiAnswer && (
+                                    <text size="xsmall" color={Theme.colors.textDim}> (AI picked)</text>
+                                )}
+                            </hstack>
+                        );
+                    })}
+                </vstack>
+
+                {/* Result + Next */}
+                {state.showResult && (
+                    <vstack padding="small" alignment="center middle" gap="small">
+                        <text size="small" color={state.userAnswer === q.correctIndex ? Theme.colors.success : Theme.colors.danger} weight="bold">
+                            {state.userAnswer === q.correctIndex ? 'Correct!' : `Wrong! Answer: ${q.options[q.correctIndex]}`}
+                        </text>
+                        <text size="xsmall" color={Theme.colors.textDim}>
+                            AI {state.aiAnswer === q.correctIndex ? 'got it right' : 'got it wrong'}
+                        </text>
+                        <button appearance="primary" size="small" onPress={onNext}>
+                            {state.currentRound + 1 >= state.totalRounds ? 'SEE RESULTS' : 'NEXT QUESTION'}
+                        </button>
+                    </vstack>
+                )}
 
                 <hstack alignment="center middle" padding="small">
                     <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>

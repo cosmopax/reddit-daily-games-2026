@@ -64,6 +64,7 @@ Devvit.addCustomPostType({
         const [feed, setFeed] = useState<any[]>([]);
         const [refreshNonce, setRefreshNonce] = useState<number>(0);
         const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
+        const [mySubmissions, setMySubmissions] = useState<string[]>([]);
 
         const SUBMIT_COOLDOWN_MS = 30_000;
 
@@ -78,13 +79,20 @@ Devvit.addCustomPostType({
                 const now = Date.now();
                 if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
                     const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - (now - lastSubmitTime)) / 1000);
-                    setStatus(`Cooldown: ${remaining}s before next creation`);
+                    setStatus(`Cooldown: ${remaining}s`);
                     return;
                 }
                 setStatus('⚡ Forging your meme...');
                 const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
+                // Trigger the scheduler to process the queue
+                try {
+                    await context.scheduler.runJob({ name: 'process_queue', runAt: new Date(Date.now() + 2000) });
+                } catch (e) {
+                    console.error('Failed to schedule process_queue:', e);
+                }
                 setLastSubmitTime(Date.now());
-                setStatus('🗡️ Your creation enters the arena! Tap Refresh in ~30s.');
+                setMySubmissions(prev => [...prev, values.prompt!]);
+                setStatus(`Queued! Generating image... tap 🔄 in ~30s`);
             }
         );
 
@@ -186,6 +194,17 @@ Devvit.addCustomPostType({
                         <button onPress={() => context.ui.showForm(promptForm)} appearance="primary" size="small">Create Meme</button>
                     </hstack>
                 </vstack>
+
+                {/* Your Pending Submissions */}
+                {mySubmissions.length > 0 && (
+                    <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.success}>
+                        <text color={Theme.colors.success} weight="bold" size="small">Your Submissions (generating...)</text>
+                        {mySubmissions.map((prompt, i) => (
+                            <text key={`sub-${i}`} size="xsmall" color={Theme.colors.textDim} wrap>• {prompt}</text>
+                        ))}
+                        <text size="xsmall" color={Theme.colors.textDim}>Tap 🔄 below to check if ready</text>
+                    </vstack>
+                )}
 
                 <spacer size="small" />
 

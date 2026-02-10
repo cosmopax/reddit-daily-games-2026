@@ -71,7 +71,12 @@ Devvit.addCustomPostType({
         const [hasPlayed, setHasPlayed] = useState(false);
         const [result, setResult] = useState<'correct' | 'wrong' | null>(null);
 
-        const { data, loading } = useAsync(async () => {
+        // ALL hooks must be called before any early return (Rules of Hooks)
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+        const [lbLoading, setLbLoading] = useState(false);
+
+        const { data, loading, error } = useAsync(async () => {
             const played = await context.redis.hGet('daily_participants', userId);
             const rawA = await context.redis.get('daily_trend_a');
             const rawB = await context.redis.get('daily_trend_b');
@@ -140,7 +145,7 @@ Devvit.addCustomPostType({
             await context.redis.set(statsKey, JSON.stringify(stats));
         };
 
-        if (loading || !data) {
+        if (loading) {
             return (
                 <vstack alignment="center middle" height="100%" backgroundColor={Theme.colors.background}>
                     <text color={Theme.colors.primary} size="large" weight="bold">HYPER HIVE MIND</text>
@@ -149,13 +154,18 @@ Devvit.addCustomPostType({
                 </vstack>
             );
         }
+        if (!data) {
+            return (
+                <vstack alignment="center middle" height="100%" backgroundColor={Theme.colors.background}>
+                    <text color={Theme.colors.danger} size="large" weight="bold">SIGNAL LOST</text>
+                    <spacer size="small" />
+                    <text color={Theme.colors.textDim} size="small">{error?.message || 'Failed to load trends. Try refreshing.'}</text>
+                </vstack>
+            );
+        }
 
         const { trends: currentTrends, played } = data;
         const showResult = played || result; // If previously played or just played
-
-        const [showLeaderboard, setShowLeaderboard] = useState(false);
-        const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
-        const [lbLoading, setLbLoading] = useState(false);
 
         const loadLeaderboard = async () => {
             setLbLoading(true);

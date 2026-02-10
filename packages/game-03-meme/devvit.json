@@ -1,0 +1,19 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "meme-wars",
+  "blocks": {
+    "entry": "src/main.tsx"
+  },
+  "permissions": {
+    "http": {
+      "enable": true
+    },
+    "redis": true,
+    "reddit": {
+      "enable": true
+    }
+  },
+  "marketingAssets": {
+    "icon": "assets/icon.png"
+  }
+}

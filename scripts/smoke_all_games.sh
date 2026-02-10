@@ -15,6 +15,7 @@ games=(
   "game-02-trivia"
   "game-03-meme"
   "game-04-duel"
+  "game-05-lumen-weave"
 )
 
 echo "== smoke: shared =="

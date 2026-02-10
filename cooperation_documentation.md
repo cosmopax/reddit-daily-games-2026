@@ -153,3 +153,64 @@
 - **Commands:** `git status --short --branch`; `git diff -- .worktrees/codex-solo-completion`; `git -C .worktrees/codex-solo-completion show --name-only --oneline -n 1 105779d`; `date '+%Y-%m-%d %H:%M'`.
 - **Tests:** None (metadata-only root pointer sync; no runtime changes).
 - **Git/Worktree:** Root checkout on `main`; referenced worktree `./.worktrees/codex-solo-completion` on branch `codex/solo-completion`.
+
+### [2026-02-10 23:54] - New Game 05: Lumen Weave (Agent: Codex)
+- **Intent:** Create a brand-new, visually striking game app quickly and integrate it into the existing Reddit Devvit portfolio with an innovative gameplay loop.
+- **Outcome:**
+  - Added new package `packages/game-05-lumen-weave` with a fresh gameplay design: **Lumen Weave**.
+  - Implemented a novel grid-transform puzzle loop (Prism Burst / Orbit Fold / Phase Lattice) with resonance-driven mirror-echo mechanics.
+  - Built a high-contrast neon UI flow with target-vs-live field rendering, sigil controls, dynamic progress telemetry, and post-game share flow.
+  - Added Redis-backed daily state generation and leaderboard progression in `src/LumenWeaveServer.ts`.
+  - Registered the new game in repo-level docs/checks:
+    - Updated root `README.md` game list + setup steps.
+    - Updated `scripts/smoke_all_games.sh` to include `game-05-lumen-weave`.
+- **Commands:**
+  - `git worktree add -b codex/game-05-lumen-weave .worktrees/codex-game-05-lumen-weave`
+  - `cp -R packages/game-04-duel packages/game-05-lumen-weave`
+  - file rewrites for `packages/game-05-lumen-weave/src/main.tsx`, `packages/game-05-lumen-weave/src/LumenWeaveServer.ts`, package metadata, and docs via patch/heredoc edits
+  - `npm install` in:
+    - `packages/shared`
+    - `packages/game-01-strategy`
+    - `packages/game-02-trivia`
+    - `packages/game-03-meme`
+    - `packages/game-04-duel`
+    - `packages/game-05-lumen-weave`
+  - `bash scripts/smoke_all_games.sh`
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` passed for shared + all five games (`smoke checks complete`).
+- **Git/Worktree:** Worktree `./.worktrees/codex-game-05-lumen-weave` on branch `codex/game-05-lumen-weave`; changes are local/uncommitted.
+
+### [2026-02-11 00:17] - Game 05 Upload Run (Agent: Codex)
+- **Intent:** Execute requested upload flow for the newly added `game-05-lumen-weave` package.
+- **Outcome:**
+  - Re-ran pre-deploy smoke gate successfully for shared + all five games.
+  - Confirmed Devvit auth (`whoami`) for uploader account.
+  - Uploaded app successfully from `packages/game-05-lumen-weave`.
+  - Devvit CLI updated app name in config to `ya-ma-sua-lik-it` during upload.
+  - Install-to-default-playtest emitted warning due existing installation of the same app in that subreddit (non-blocking).
+  - App dashboard URL reported by CLI: `https://developers.reddit.com/apps/ya-ma-sua-lik-it`.
+- **Commands:**
+  - `bash scripts/smoke_all_games.sh`
+  - `npx devvit whoami`
+  - `npx devvit upload`
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` passed (`smoke checks complete`).
+- **Git/Worktree:** Worktree `./.worktrees/codex-game-05-lumen-weave` on branch `codex/game-05-lumen-weave`; package remains local/uncommitted.
+
+### [2026-02-11 00:34] - Game 05 Publish (Unlisted) (Agent: Codex)
+- **Intent:** Publish the new `game-05-lumen-weave` app version to Reddit as requested, following repo pre-publish checks.
+- **Outcome:**
+  - Re-ran `scripts/smoke_all_games.sh` successfully before publish.
+  - Ran `npx devvit publish` in `packages/game-05-lumen-weave` and completed source-bundle consent flow.
+  - Publish completed successfully for version `0.1.0` and app is now **unlisted**.
+  - CLI warning persisted for default playtest install due existing installation in `t5_glajif` (non-blocking).
+  - App URL: `https://developers.reddit.com/apps/ya-ma-sua-lik-it`.
+  - Removed CLI-generated local artifacts inside the package (`.env`, embedded `.git`) to keep repository contents clean for future commit.
+- **Commands:**
+  - `bash scripts/smoke_all_games.sh`
+  - `npx devvit publish`
+  - `rm -rf packages/game-05-lumen-weave/.git`
+  - `rm -f packages/game-05-lumen-weave/.env`
+- **Tests:**
+  - `bash scripts/smoke_all_games.sh` passed (`smoke checks complete`).
+- **Git/Worktree:** Worktree `./.worktrees/codex-game-05-lumen-weave` on branch `codex/game-05-lumen-weave`; changes remain local/uncommitted.

@@ -1,6 +1,6 @@
 import { Devvit, useState, useAsync, SettingScope } from '@devvit/public-api';
 import './global.d.ts';
-import { Theme, Leaderboard, LeaderboardUI, VIC, SAL, CharacterPanel, NarrativeHeader } from 'shared';
+import { Theme, Leaderboard, LeaderboardUI, VIC, SAL, CharacterPanel, NarrativeHeader, SplashScreen } from 'shared';
 import { AssetType, ASSETS, DailyChoiceResult } from './types';
 import { GameStrategyServer } from './server';
 

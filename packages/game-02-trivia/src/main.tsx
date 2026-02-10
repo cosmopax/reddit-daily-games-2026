@@ -1,5 +1,5 @@
 import { Devvit, SettingScope, useState, useAsync } from '@devvit/public-api';
-import { Theme, ServiceProxy, Leaderboard, LeaderboardUI, NarrativeHeader, HIVE_BRAIN, CharacterPanel } from 'shared';
+import { Theme, ServiceProxy, Leaderboard, LeaderboardUI, NarrativeHeader, HIVE_BRAIN, CharacterPanel, SplashScreen } from 'shared';
 // Ingests trends from external API via shared proxy pattern
 
 Devvit.configure({

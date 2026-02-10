@@ -84,16 +84,61 @@ export class ServiceProxy {
 
     private getFallbackTrends(count: number): { query: string; traffic: number; trafficDisplay: string }[] {
         const pool = [
+            // Gaming
             { query: 'Minecraft', traffic: 500000, trafficDisplay: '500K+' },
             { query: 'Fortnite', traffic: 200000, trafficDisplay: '200K+' },
+            { query: 'GTA 6', traffic: 820000, trafficDisplay: '820K+' },
+            { query: 'Elden Ring DLC', traffic: 310000, trafficDisplay: '310K+' },
+            { query: 'Nintendo Switch 2', traffic: 450000, trafficDisplay: '450K+' },
+            { query: 'Roblox', traffic: 380000, trafficDisplay: '380K+' },
+            { query: 'Baldur\'s Gate 3', traffic: 270000, trafficDisplay: '270K+' },
+            // Entertainment
             { query: 'Taylor Swift', traffic: 350000, trafficDisplay: '350K+' },
-            { query: 'AI Chatbots', traffic: 180000, trafficDisplay: '180K+' },
-            { query: 'Reddit IPO', traffic: 120000, trafficDisplay: '120K+' },
+            { query: 'Beyonce', traffic: 290000, trafficDisplay: '290K+' },
+            { query: 'Marvel Phase 6', traffic: 180000, trafficDisplay: '180K+' },
+            { query: 'Squid Game Season 3', traffic: 520000, trafficDisplay: '520K+' },
+            { query: 'The Bear Season 4', traffic: 160000, trafficDisplay: '160K+' },
+            { query: 'Dune Part Three', traffic: 340000, trafficDisplay: '340K+' },
+            { query: 'Olympics 2028', traffic: 410000, trafficDisplay: '410K+' },
+            // Tech
+            { query: 'AI Chatbots', traffic: 680000, trafficDisplay: '680K+' },
+            { query: 'ChatGPT', traffic: 920000, trafficDisplay: '920K+' },
+            { query: 'iPhone 17', traffic: 550000, trafficDisplay: '550K+' },
+            { query: 'Tesla Robotaxi', traffic: 230000, trafficDisplay: '230K+' },
+            { query: 'Neuralink', traffic: 190000, trafficDisplay: '190K+' },
+            { query: 'Apple Vision Pro', traffic: 310000, trafficDisplay: '310K+' },
+            { query: 'Quantum Computing', traffic: 140000, trafficDisplay: '140K+' },
+            // Science & Space
             { query: 'SpaceX Launch', traffic: 280000, trafficDisplay: '280K+' },
+            { query: 'Mars Colony', traffic: 95000, trafficDisplay: '95K+' },
+            { query: 'James Webb Telescope', traffic: 170000, trafficDisplay: '170K+' },
+            { query: 'CRISPR gene editing', traffic: 110000, trafficDisplay: '110K+' },
+            { query: 'Climate Change 2026', traffic: 260000, trafficDisplay: '260K+' },
+            // Sports
+            { query: 'NBA Playoffs', traffic: 470000, trafficDisplay: '470K+' },
+            { query: 'World Cup 2026', traffic: 750000, trafficDisplay: '750K+' },
+            { query: 'UFC fight night', traffic: 320000, trafficDisplay: '320K+' },
+            { query: 'Super Bowl', traffic: 1200000, trafficDisplay: '1.2M+' },
+            { query: 'Formula 1', traffic: 390000, trafficDisplay: '390K+' },
+            // Current Events
+            { query: 'Reddit', traffic: 600000, trafficDisplay: '600K+' },
+            { query: 'Bitcoin price', traffic: 880000, trafficDisplay: '880K+' },
+            { query: 'Stock market today', traffic: 720000, trafficDisplay: '720K+' },
+            { query: 'Election 2026', traffic: 530000, trafficDisplay: '530K+' },
+            // Memes & Culture
+            { query: 'Moo Deng', traffic: 210000, trafficDisplay: '210K+' },
+            { query: 'Skibidi Toilet', traffic: 340000, trafficDisplay: '340K+' },
+            { query: 'Brain rot', traffic: 150000, trafficDisplay: '150K+' },
+            { query: 'Brat summer', traffic: 180000, trafficDisplay: '180K+' },
+            { query: 'Demure', traffic: 120000, trafficDisplay: '120K+' },
+            { query: 'Sora AI video', traffic: 430000, trafficDisplay: '430K+' },
         ];
-        // Shuffle and return
-        const shuffled = pool.sort(() => Math.random() - 0.5);
-        return shuffled.slice(0, count);
+        // Fisher-Yates shuffle
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return pool.slice(0, count);
     }
 
     /**

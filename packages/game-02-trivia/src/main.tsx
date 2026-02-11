@@ -200,20 +200,26 @@ Devvit.addSettings([
 
 Devvit.addMenuItem({
     label: 'Create Hive Mind Gauntlet Post',
-    location: 'subreddit',
+    location: ['subreddit', 'post'],
+    forUserType: 'moderator',
     onPress: async (_event, context) => {
-        const sub = await context.reddit.getCurrentSubreddit();
-        await context.reddit.submitPost({
-            title: '🧠 Hive Mind Gauntlet — 5 Rounds. Sync or Desync.',
-            subredditName: sub.name,
-            preview: (
-                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.colors.primary} size="xlarge" weight="bold">NEURAL SYNC INITIALIZING...</text>
-                    <text color={Theme.colors.textDim} size="small">Connecting to the Hive...</text>
-                </vstack>
-            ),
-        });
-        context.ui.showToast('Game post created!');
+        try {
+            const sub = await context.reddit.getCurrentSubreddit();
+            await context.reddit.submitPost({
+                title: '🧠 Hive Mind Gauntlet — 5 Rounds. Sync or Desync.',
+                subredditName: sub.name,
+                preview: (
+                    <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                        <text color={Theme.colors.primary} size="xlarge" weight="bold">NEURAL SYNC INITIALIZING...</text>
+                        <text color={Theme.colors.textDim} size="small">Connecting to the Hive...</text>
+                    </vstack>
+                ),
+            });
+            context.ui.showToast('Game post created!');
+        } catch (e) {
+            console.error('Failed to create Hive Mind Gauntlet post:', e);
+            context.ui.showToast('Failed to create post. Check app logs.');
+        }
     },
 });
 

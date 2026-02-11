@@ -22,20 +22,26 @@ Devvit.addSettings([
 
 Devvit.addMenuItem({
     label: 'Create Get Rich Lazy Post',
-    location: 'subreddit',
+    location: ['subreddit', 'post'],
+    forUserType: 'moderator',
     onPress: async (_event, context) => {
-        const sub = await context.reddit.getCurrentSubreddit();
-        await context.reddit.submitPost({
-            title: '💰 Get Rich Lazy — Two Advisors. One Wants You Rich. The Other Wants You Alive.',
-            subredditName: sub.name,
-            preview: (
-                <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
-                    <text color={Theme.narrative.vicAccent} size="xlarge" weight="bold">Loading Get Rich Lazy...</text>
-                    <text color={Theme.colors.textDim} size="small">Preparing today's market scenario...</text>
-                </vstack>
-            ),
-        });
-        context.ui.showToast('Game post created!');
+        try {
+            const sub = await context.reddit.getCurrentSubreddit();
+            await context.reddit.submitPost({
+                title: '💰 Get Rich Lazy — Two Advisors. One Wants You Rich. The Other Wants You Alive.',
+                subredditName: sub.name,
+                preview: (
+                    <vstack padding="large" alignment="center middle" backgroundColor={Theme.colors.background}>
+                        <text color={Theme.narrative.vicAccent} size="xlarge" weight="bold">Loading Get Rich Lazy...</text>
+                        <text color={Theme.colors.textDim} size="small">Preparing today's market scenario...</text>
+                    </vstack>
+                ),
+            });
+            context.ui.showToast('Game post created!');
+        } catch (e) {
+            console.error('Failed to create Get Rich Lazy post:', e);
+            context.ui.showToast('Failed to create post. Check app logs.');
+        }
     },
 });
 

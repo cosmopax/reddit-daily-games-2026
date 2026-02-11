@@ -47,6 +47,44 @@ interface GauntletState {
 const TOTAL_ROUNDS = 5;
 const ROUND_SEQUENCE: RoundType[] = ['higher_lower', 'closest_guess', 'odd_one_out', 'higher_lower', 'closest_guess'];
 
+// Text juice: Hive Brain reacts between rounds
+function getHiveBrainReaction(correct: boolean, consecutiveCorrect: number, roundType: RoundType, roundNum: number): string {
+    if (roundNum === 5) {
+        if (correct) return 'FINAL SYNC ACHIEVED. The hive resonates with your frequency.';
+        return 'Signal lost on the final transmission. So close...';
+    }
+    if (consecutiveCorrect >= 4) return 'UNPRECEDENTED RESONANCE. You ARE the collective.';
+    if (consecutiveCorrect >= 3) return 'Triple sync! The neural pathways are BLAZING.';
+    if (consecutiveCorrect >= 2) return 'Double sync. The hive acknowledges your signal strength.';
+
+    if (correct) {
+        const reactions: Record<RoundType, string[]> = {
+            higher_lower: ['The collective knew. And so did you.', 'Frequency matched. Signal clear.'],
+            closest_guess: ['Precise calibration. The hive is impressed.', 'Your estimation circuits are running hot.'],
+            odd_one_out: ['Pattern recognition: SUPERIOR.', 'You spotted the anomaly instantly.'],
+        };
+        return reactions[roundType][Math.floor(Math.random() * reactions[roundType].length)];
+    } else {
+        const misses: Record<RoundType, string[]> = {
+            higher_lower: ['The signal was inverted. Recalibrate.', 'Interference detected. The hive expected more.'],
+            closest_guess: ['Off-frequency. The true signal was elsewhere.', 'Estimation error. Adjusting parameters...'],
+            odd_one_out: ['The anomaly hid in plain sight.', 'Pattern disruption. The hive is reconfiguring.'],
+        };
+        return misses[roundType][Math.floor(Math.random() * misses[roundType].length)];
+    }
+}
+
+function buildHiveEmojiGrid(answers: (boolean | null)[], score: number, grade: string): string {
+    let grid = 'HIVE MIND GAUNTLET\n';
+    const types = ['H/L', 'Guess', 'Odd', 'H/L', 'Guess'];
+    answers.forEach((a, i) => {
+        const emoji = a === true ? '🟢' : a === false ? '🔴' : '⚫';
+        grid += `R${i + 1} ${types[i]} ${emoji}\n`;
+    });
+    grid += `Score: ${score} | Grade: ${grade}`;
+    return grid;
+}
+
 // ═══════════════════════════════════════════════════════
 // BUILD GAUNTLET ROUNDS FROM TRENDS
 // ═══════════════════════════════════════════════════════
@@ -214,7 +252,9 @@ Devvit.addCustomPostType({
                 ? gameState.answers.filter(a => a === true).length + 1
                 : 0;
             const streakMultiplier = consecutiveCorrect >= 4 ? 3 : consecutiveCorrect >= 2 ? 2 : 1;
-            const basePoints = correct ? 100 : 0;
+            // R5 (index 4) is the FINAL SYNC — worth 2x base points
+            const isFinalRound = roundIdx === TOTAL_ROUNDS - 1;
+            const basePoints = correct ? (isFinalRound ? 200 : 100) : 0;
             const roundPoints = basePoints * streakMultiplier;
 
             const newState: GauntletState = {
@@ -376,8 +416,8 @@ Devvit.addCustomPostType({
                             <text size="small" color={Theme.colors.text}>Higher or Lower?</text>
                         </hstack>
                         <hstack gap="small" alignment="start middle">
-                            <text size="small" color={Theme.colors.warning}>R5</text>
-                            <text size="small" color={Theme.colors.text}>Guess the Searches</text>
+                            <text size="small" color={Theme.colors.gold}>R5</text>
+                            <text size="small" weight="bold" color={Theme.colors.gold}>FINAL SYNC (2x Points!)</text>
                         </hstack>
                     </vstack>
 
@@ -489,13 +529,14 @@ Devvit.addCustomPostType({
                         <button appearance="secondary" size="small" onPress={async () => {
                             try {
                                 if (!context.postId) return;
+                                const emojiGrid = buildHiveEmojiGrid(gameState.answers, gameState.score, grade);
                                 await context.reddit.submitComment({
                                     id: context.postId,
-                                    text: `🧠 Hive Mind Gauntlet: ${gameState.score} pts (${correctCount}/5) — Grade ${grade}! Can you beat that?`
+                                    text: emojiGrid
                                 });
-                                context.ui.showToast('Shared!');
+                                context.ui.showToast('Sync grid shared!');
                             } catch (e) { context.ui.showToast('Could not share'); }
-                        }}>Share Result</button>
+                        }}>Share Grid</button>
                         <button appearance="secondary" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>Rankings</button>
                     </hstack>
 
@@ -535,11 +576,13 @@ Devvit.addCustomPostType({
 
         // ─── ROUND RESULT ───────────────────
         if (gameState.phase === 'round_result') {
+            const totalCorrectSoFar = gameState.answers.filter(a => a === true).length;
+            const isFinalRound = gameState.currentRound === TOTAL_ROUNDS - 1;
             return (
                 <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" alignment="center middle" gap="medium">
                     <NarrativeHeader
                         title="HIVE MIND GAUNTLET"
-                        subtitle={`Round ${roundNum} Result`}
+                        subtitle={isFinalRound ? 'FINAL SYNC Result' : `Round ${roundNum} Result`}
                         accentColor={HIVE_BRAIN.accentColor}
                         onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     />
@@ -550,12 +593,15 @@ Devvit.addCustomPostType({
                         borderColor={gameState.lastCorrect ? Theme.colors.success : Theme.colors.danger}
                         alignment="center middle" gap="small" width="100%">
                         <text size="xlarge" weight="bold" color={gameState.lastCorrect ? Theme.colors.success : Theme.colors.danger}>
-                            {gameState.lastCorrect ? 'NEURAL SYNC!' : 'DESYNC!'}
+                            {gameState.lastCorrect ? (isFinalRound ? 'FINAL SYNC LOCKED!' : 'NEURAL SYNC!') : (isFinalRound ? 'FINAL SYNC FAILED!' : 'DESYNC!')}
                         </text>
                         {gameState.streakBonus > 1 && (
                             <text size="small" color={Theme.colors.warning} weight="bold">
                                 Streak x{gameState.streakBonus} multiplier!
                             </text>
+                        )}
+                        {isFinalRound && gameState.lastCorrect && (
+                            <text size="small" color={Theme.colors.gold} weight="bold">2x FINAL ROUND BONUS!</text>
                         )}
 
                         {/* Show the answer for the round */}
@@ -581,10 +627,17 @@ Devvit.addCustomPostType({
                         )}
                     </vstack>
 
+                    {/* Hive Brain narrative reaction */}
+                    <CharacterPanel
+                        character={HIVE_BRAIN}
+                        dialogue={getHiveBrainReaction(!!gameState.lastCorrect, totalCorrectSoFar, round.type, roundNum)}
+                        compact={true}
+                    />
+
                     <spacer grow />
 
                     <button appearance="primary" size="medium" onPress={nextRound}>
-                        {roundNum >= TOTAL_ROUNDS ? 'SEE FINAL RESULTS' : `ROUND ${roundNum + 1} →`}
+                        {roundNum >= TOTAL_ROUNDS ? 'SEE FINAL RESULTS' : (roundNum === TOTAL_ROUNDS - 1 ? 'FINAL SYNC →' : `ROUND ${roundNum + 1} →`)}
                     </button>
 
                     <hstack alignment="center middle" padding="small">

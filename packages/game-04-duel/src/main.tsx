@@ -39,6 +39,57 @@ Devvit.addMenuItem({
     },
 });
 
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const categoryEmojis: Record<string, string> = {
+    'History': '📜', 'Science': '🔬', 'Pop Culture': '🎬',
+    'Geography': '🌍', 'Sports': '⚽', 'Technology': '💻',
+};
+const difficultyEmojis: Record<string, string> = { easy: '🟢', normal: '🟡', hard: '🔴' };
+const difficultyColors: Record<string, string> = {
+    easy: Theme.colors.success,
+    normal: Theme.colors.warning,
+    hard: Theme.colors.danger,
+};
+
+function buildEmojiGrid(state: DuelState): string {
+    let grid = 'OUTSMARTED AGAIN\n';
+    state.rounds.forEach((round, i) => {
+        if (i >= state.player.correct.length) return;
+        const catEmoji = categoryEmojis[round.category] || '🎯';
+        const playerOk = state.player.correct[i];
+        const aiOk = state.ai.correct[i];
+        const pDiff = difficultyEmojis[state.player.difficultyChoices[i]] || '🟡';
+        const aDiff = difficultyEmojis[state.ai.difficultyChoices[i]] || '🟡';
+        grid += `R${i + 1} ${catEmoji} You:${pDiff}${playerOk ? '✅' : '❌'} AI:${aDiff}${aiOk ? '✅' : '❌'}\n`;
+    });
+    const won = state.player.score > state.ai.score;
+    const tied = state.player.score === state.ai.score;
+    grid += `${won ? '🏆 VICTORY' : tied ? '🤝 TIE' : '💀 DEFEAT'} ${state.player.score}-${state.ai.score}`;
+    return grid;
+}
+
+function getRankTitle(wins: number): { title: string; color: string } {
+    if (wins >= 50) return { title: 'Grandmaster', color: Theme.colors.gold };
+    if (wins >= 25) return { title: 'Champion', color: '#9400D3' };
+    if (wins >= 10) return { title: 'Scholar', color: Theme.colors.secondary };
+    if (wins >= 5) return { title: 'Duelist', color: Theme.colors.success };
+    if (wins >= 1) return { title: 'Apprentice', color: Theme.colors.textDim };
+    return { title: 'Newcomer', color: Theme.colors.textDim };
+}
+
+// AI personality quips based on game state
+function getAiQuip(aiDiff: Difficulty, aiCorrect: boolean, playerCorrect: boolean, gap: number): string {
+    if (aiDiff === 'hard' && aiCorrect) return '"Calculated. Precisely calculated."';
+    if (aiDiff === 'hard' && !aiCorrect) return '"Even I overreach sometimes..."';
+    if (!playerCorrect && aiCorrect) return '"Better luck next round, human."';
+    if (playerCorrect && !aiCorrect) return '"...impressive. I underestimated you."';
+    if (gap >= 4) return '"I\'m adapting. Don\'t get comfortable."';
+    if (gap <= -4) return '"This is almost too easy."';
+    return '"The game continues."';
+}
+
 Devvit.addCustomPostType({
     name: 'AI Duel',
     height: 'tall',
@@ -56,10 +107,17 @@ Devvit.addCustomPostType({
 
         const { data: initialData, loading, error } = useAsync<any>(async () => {
             const state = await server.getGameState(userId);
-            return { state } as any;
+            const stats = await server.getPlayerStats(userId);
+            return { state, stats } as any;
         });
 
         const state: DuelState | null = localState?.state || initialData?.state;
+        const stats = localState?.stats || initialData?.stats || { wins: 0, streak: 0, bestStreak: 0, games: 0 };
+
+        const refreshStats = async () => {
+            const s = await server.getPlayerStats(userId);
+            setLocalState((prev: any) => ({ ...prev, stats: s }));
+        };
 
         const loadLeaderboard = async () => {
             setLbLoading(true);
@@ -73,7 +131,7 @@ Devvit.addCustomPostType({
             if (!state || processing) return;
             setProcessing(true);
             const newState = await server.selectDifficulty(userId, difficulty);
-            setLocalState({ state: newState });
+            setLocalState((prev: any) => ({ ...prev, state: newState }));
             setProcessing(false);
         };
 
@@ -81,7 +139,7 @@ Devvit.addCustomPostType({
             if (!state || processing) return;
             setProcessing(true);
             const newState = await server.submitAnswer(userId, answerIndex);
-            setLocalState({ state: newState });
+            setLocalState((prev: any) => ({ ...prev, state: newState }));
             setProcessing(false);
         };
 
@@ -89,7 +147,8 @@ Devvit.addCustomPostType({
             if (!state) return;
             setProcessing(true);
             const newState = await server.nextRound(userId);
-            setLocalState({ state: newState });
+            setLocalState((prev: any) => ({ ...prev, state: newState }));
+            if (newState.phase === 'game_over') await refreshStats();
             setProcessing(false);
         };
 
@@ -97,14 +156,14 @@ Devvit.addCustomPostType({
             if (!state) return;
             setProcessing(true);
             const newState = await server.proceedToDifficultySelect(userId);
-            setLocalState({ state: newState });
+            setLocalState((prev: any) => ({ ...prev, state: newState }));
             setProcessing(false);
         };
 
         const onReset = async () => {
             setProcessing(true);
             const newState = await server.resetGame(userId);
-            setLocalState({ state: newState });
+            setLocalState((prev: any) => ({ ...prev, state: newState }));
             setProcessing(false);
         };
 
@@ -149,29 +208,53 @@ Devvit.addCustomPostType({
             );
         }
 
-        // Score bar component used across phases
-        const ScoreBar = () => (
-            <hstack padding="small" backgroundColor={Theme.colors.surface} cornerRadius="small" alignment="space-between middle" width="100%">
-                <hstack gap="small" alignment="center middle">
-                    <text size="small" color={Theme.colors.textDim}>You:</text>
-                    <text size="medium" weight="bold" color={Theme.colors.success}>{state.player.score}</text>
+        // Score bar with juice
+        const ScoreBar = () => {
+            const gap = state.player.score - state.ai.score;
+            const momentumColor = gap > 0 ? Theme.colors.success : gap < 0 ? Theme.colors.danger : Theme.colors.textDim;
+            return (
+                <hstack padding="small" backgroundColor={Theme.colors.surface} cornerRadius="small" alignment="space-between middle" width="100%">
+                    <hstack gap="small" alignment="center middle">
+                        <text size="small" color={Theme.colors.textDim}>You:</text>
+                        <text size="medium" weight="bold" color={Theme.colors.success}>{state.player.score}</text>
+                    </hstack>
+                    <vstack alignment="center middle">
+                        <text size="xsmall" color={accentColor}>
+                            {(state as any).isTiebreaker ? 'SUDDEN DEATH' : `Round ${state.currentRound + 1}/${state.totalRounds}`}
+                        </text>
+                        {gap !== 0 && (
+                            <text size="xsmall" color={momentumColor}>
+                                {gap > 0 ? `You lead by ${gap}` : `AI leads by ${Math.abs(gap)}`}
+                            </text>
+                        )}
+                    </vstack>
+                    <hstack gap="small" alignment="center middle">
+                        <text size="small" color={Theme.colors.textDim}>AI:</text>
+                        <text size="medium" weight="bold" color={Theme.colors.danger}>{state.ai.score}</text>
+                    </hstack>
                 </hstack>
-                <vstack alignment="center middle">
-                    <text size="xsmall" color={accentColor}>Round {state.currentRound + 1}/{state.totalRounds}</text>
-                </vstack>
-                <hstack gap="small" alignment="center middle">
-                    <text size="small" color={Theme.colors.textDim}>AI:</text>
-                    <text size="medium" weight="bold" color={Theme.colors.danger}>{state.ai.score}</text>
-                </hstack>
-            </hstack>
-        );
+            );
+        };
 
         // ─── GAME OVER ─────────────────
         if (state.phase === 'game_over') {
             const won = state.player.score > state.ai.score;
             const tied = state.player.score === state.ai.score;
+            const rank = getRankTitle(stats.wins);
+            const emojiGrid = buildEmojiGrid(state);
+
+            // Achievements
+            const achievements: string[] = [];
+            const playerCorrectCount = state.player.correct.filter(c => c).length;
+            if (playerCorrectCount === state.totalRounds) achievements.push('PERFECT GAME');
+            if (state.player.difficultyChoices.every(d => d === 'hard') && won) achievements.push('HARD MODE HERO');
+            if (won && state.player.score - state.ai.score >= 6) achievements.push('DOMINATION');
+            if (won && state.ai.score > state.player.score - 2) achievements.push('CLUTCH VICTORY');
+            if ((state as any).isTiebreaker && won) achievements.push('SUDDEN DEATH SURVIVOR');
+            if (stats.streak >= 3) achievements.push(`${stats.streak}-WIN STREAK`);
+
             return (
-                <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" alignment="center middle" gap="medium">
+                <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" gap="small">
                     <NarrativeHeader
                         title="OUTSMARTED AGAIN"
                         subtitle="Final Results"
@@ -179,59 +262,91 @@ Devvit.addCustomPostType({
                         onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     />
 
+                    {/* Result banner */}
                     <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger} alignment="center middle" gap="small" width="100%">
-                        <text size="xlarge" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
+                        <text size="xxlarge" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
                             {won ? 'YOU WIN!' : tied ? 'TIE GAME!' : 'AI WINS!'}
                         </text>
-                        <spacer size="small" />
                         <hstack gap="large" alignment="center middle">
                             <vstack alignment="center middle">
                                 <text size="small" color={Theme.colors.textDim}>You</text>
                                 <text size="xxlarge" weight="bold" color={Theme.colors.success}>{state.player.score}</text>
-                                <text size="xsmall" color={Theme.colors.textDim}>pts</text>
                             </vstack>
                             <text size="large" color={Theme.colors.textDim}>vs</text>
                             <vstack alignment="center middle">
                                 <text size="small" color={Theme.colors.textDim}>AI</text>
                                 <text size="xxlarge" weight="bold" color={Theme.colors.danger}>{state.ai.score}</text>
-                                <text size="xsmall" color={Theme.colors.textDim}>pts</text>
                             </vstack>
                         </hstack>
-                        <text size="small" color={Theme.colors.textDim}>{state.totalRounds} rounds played</text>
+
+                        {/* Rank & Streak */}
+                        <hstack gap="medium" alignment="center middle">
+                            <vstack alignment="center middle">
+                                <text size="xsmall" color={Theme.colors.textDim}>Rank</text>
+                                <text size="small" weight="bold" color={rank.color}>{rank.title}</text>
+                            </vstack>
+                            <vstack alignment="center middle">
+                                <text size="xsmall" color={Theme.colors.textDim}>Streak</text>
+                                <text size="small" weight="bold" color={stats.streak >= 3 ? Theme.colors.warning : Theme.colors.text}>
+                                    {stats.streak >= 3 ? `🔥 ${stats.streak}` : String(stats.streak)}
+                                </text>
+                            </vstack>
+                            <vstack alignment="center middle">
+                                <text size="xsmall" color={Theme.colors.textDim}>Wins</text>
+                                <text size="small" weight="bold" color={Theme.colors.text}>{stats.wins}</text>
+                            </vstack>
+                        </hstack>
                     </vstack>
 
-                    {/* Round breakdown */}
+                    {/* Achievements */}
+                    {achievements.length > 0 && (
+                        <hstack padding="small" cornerRadius="small" backgroundColor="#1A1A0A" border="thin" borderColor={Theme.colors.gold} gap="small" alignment="center middle">
+                            <text size="small" color={Theme.colors.gold}>🏅</text>
+                            <text size="small" weight="bold" color={Theme.colors.gold}>{achievements.join(' · ')}</text>
+                        </hstack>
+                    )}
+
+                    {/* Round breakdown with emoji grid */}
                     <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} width="100%" gap="small">
-                        <text size="small" weight="bold" color={accentColor}>Round Breakdown</text>
-                        {state.rounds.map((round, i) => (
-                            <hstack key={`r-${i}`} gap="small" alignment="center middle">
-                                <text size="xsmall" color={Theme.colors.textDim}>R{i + 1}</text>
-                                <text size="xsmall" color={accentColor}>{round.category}</text>
-                                <spacer grow />
-                                <text size="xsmall" color={state.player.correct[i] ? Theme.colors.success : Theme.colors.danger}>
-                                    {state.player.correct[i] ? '+' + DIFFICULTY_POINTS[state.player.difficultyChoices[i]] : '0'}
-                                </text>
-                                <text size="xsmall" color={Theme.colors.textDim}>vs</text>
-                                <text size="xsmall" color={state.ai.correct[i] ? Theme.colors.danger : Theme.colors.success}>
-                                    {state.ai.correct[i] ? '+' + DIFFICULTY_POINTS[state.ai.difficultyChoices[i]] : '0'}
-                                </text>
-                            </hstack>
-                        ))}
+                        <text size="small" weight="bold" color={accentColor}>Battle Grid</text>
+                        {state.rounds.map((round, i) => {
+                            if (i >= state.player.correct.length) return null;
+                            const pOk = state.player.correct[i];
+                            const aOk = state.ai.correct[i];
+                            const pDiff = state.player.difficultyChoices[i];
+                            const aDiff = state.ai.difficultyChoices[i];
+                            return (
+                                <hstack key={`r-${i}`} gap="small" alignment="center middle">
+                                    <text size="xsmall" color={Theme.colors.textDim}>R{i + 1}</text>
+                                    <text size="xsmall" color={accentColor}>{categoryEmojis[round.category] || '🎯'}</text>
+                                    <spacer grow />
+                                    <text size="xsmall" color={difficultyColors[pDiff]}>{pDiff[0].toUpperCase()}</text>
+                                    <text size="xsmall" color={pOk ? Theme.colors.success : Theme.colors.danger} weight="bold">
+                                        {pOk ? `+${DIFFICULTY_POINTS[pDiff]}` : '0'}
+                                    </text>
+                                    <text size="xsmall" color={Theme.colors.textDim}>vs</text>
+                                    <text size="xsmall" color={difficultyColors[aDiff]}>{aDiff[0].toUpperCase()}</text>
+                                    <text size="xsmall" color={aOk ? Theme.colors.danger : Theme.colors.success} weight="bold">
+                                        {aOk ? `+${DIFFICULTY_POINTS[aDiff]}` : '0'}
+                                    </text>
+                                </hstack>
+                            );
+                        })}
                     </vstack>
 
-                    <hstack gap="small">
+                    <hstack gap="small" alignment="center middle">
                         <button appearance="primary" size="medium" onPress={onReset}>PLAY AGAIN</button>
                         <button appearance="secondary" size="small" onPress={async () => {
                             try {
                                 if (!context.postId) return;
-                                const result = won ? 'beat' : tied ? 'tied with' : 'lost to';
                                 await context.reddit.submitComment({
                                     id: context.postId,
-                                    text: `I ${result} the AI ${state.player.score}-${state.ai.score} pts in Outsmarted Again! Can you beat my score?`
+                                    text: emojiGrid
                                 });
-                                context.ui.showToast('Shared!');
+                                context.ui.showToast('Battle grid shared!');
                             } catch (e) { context.ui.showToast('Could not share'); }
-                        }}>Share</button>
+                        }}>Share Grid</button>
+                        <button appearance="secondary" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>Rankings</button>
                     </hstack>
                 </vstack>
             );
@@ -240,16 +355,13 @@ Devvit.addCustomPostType({
         // ─── CATEGORY REVEAL ──────────────
         if (state.phase === 'category_reveal') {
             const round = state.rounds[state.currentRound];
-            const categoryEmojis: Record<string, string> = {
-                'History': '📜', 'Science': '🔬', 'Pop Culture': '🎬',
-                'Geography': '🌍', 'Sports': '⚽', 'Technology': '💻',
-            };
+            const isTiebreaker = (state as any).isTiebreaker && state.currentRound === state.totalRounds - 1;
             return (
                 <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" alignment="center middle" gap="medium">
                     <NarrativeHeader
                         title="OUTSMARTED AGAIN"
-                        subtitle={`Round ${state.currentRound + 1} of ${state.totalRounds}`}
-                        accentColor={accentColor}
+                        subtitle={isTiebreaker ? 'SUDDEN DEATH!' : `Round ${state.currentRound + 1} of ${state.totalRounds}`}
+                        accentColor={isTiebreaker ? Theme.colors.danger : accentColor}
                         onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     />
 
@@ -257,18 +369,27 @@ Devvit.addCustomPostType({
 
                     <spacer grow />
 
-                    <vstack alignment="center middle" gap="medium" padding="large" cornerRadius="large" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor}>
-                        <text size="small" color={Theme.colors.textDim}>NEXT CATEGORY</text>
-                        <text size="xxlarge" weight="bold" color={accentColor}>
+                    {isTiebreaker && (
+                        <vstack alignment="center middle" padding="small" cornerRadius="small" backgroundColor="#2A0A0A" border="thin" borderColor={Theme.colors.danger}>
+                            <text size="medium" weight="bold" color={Theme.colors.danger}>TIED! SUDDEN DEATH ROUND!</text>
+                            <text size="small" color={Theme.colors.textDim}>One question decides everything.</text>
+                        </vstack>
+                    )}
+
+                    <vstack alignment="center middle" gap="medium" padding="large" cornerRadius="large" backgroundColor={Theme.colors.surface} border="thin" borderColor={isTiebreaker ? Theme.colors.danger : accentColor}>
+                        <text size="small" color={Theme.colors.textDim}>{isTiebreaker ? 'FINAL CATEGORY' : 'NEXT CATEGORY'}</text>
+                        <text size="xxlarge" weight="bold" color={isTiebreaker ? Theme.colors.danger : accentColor}>
                             {categoryEmojis[round.category] || '🎯'} {round.category}
                         </text>
-                        <text size="small" color={Theme.colors.textDim}>Choose your difficulty wisely...</text>
+                        <text size="small" color={Theme.colors.textDim}>
+                            {isTiebreaker ? 'Everything rides on this.' : 'Choose your difficulty wisely...'}
+                        </text>
                     </vstack>
 
                     <spacer grow />
 
                     <button appearance="primary" size="medium" onPress={onProceedToDifficulty}>
-                        CHOOSE DIFFICULTY
+                        {isTiebreaker ? 'FACE YOUR DESTINY' : 'CHOOSE DIFFICULTY'}
                     </button>
 
                     <hstack alignment="center middle" padding="small">
@@ -281,86 +402,73 @@ Devvit.addCustomPostType({
         // ─── DIFFICULTY SELECT ────────────
         if (state.phase === 'difficulty_select') {
             const round = state.rounds[state.currentRound];
+            const gap = state.player.score - state.ai.score;
+            const isTiebreaker = (state as any).isTiebreaker && state.currentRound === state.totalRounds - 1;
+
             return (
                 <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" gap="medium">
                     <NarrativeHeader
                         title="OUTSMARTED AGAIN"
-                        subtitle={`${round.category} — Round ${state.currentRound + 1}`}
-                        accentColor={accentColor}
+                        subtitle={`${round.category} — ${isTiebreaker ? 'SUDDEN DEATH' : `Round ${state.currentRound + 1}`}`}
+                        accentColor={isTiebreaker ? Theme.colors.danger : accentColor}
                         onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     />
 
                     <ScoreBar />
 
-                    <spacer size="medium" />
-
                     <vstack alignment="center middle">
-                        <text size="medium" weight="bold" color={Theme.colors.text}>Select Difficulty</text>
-                        <text size="small" color={Theme.colors.textDim}>Higher risk = more points!</text>
+                        <text size="medium" weight="bold" color={Theme.colors.text}>
+                            {isTiebreaker ? 'CHOOSE WISELY — NO SECOND CHANCES' : 'Select Difficulty'}
+                        </text>
+                        <text size="small" color={Theme.colors.textDim}>
+                            {gap >= 3 ? 'You\'re ahead — play it safe or go for the kill?'
+                                : gap <= -3 ? 'You\'re behind — time to take risks!'
+                                : 'Higher risk = more points!'}
+                        </text>
                     </vstack>
-
-                    <spacer size="small" />
 
                     {/* Easy */}
                     <hstack
-                        padding="medium"
-                        cornerRadius="medium"
-                        backgroundColor={Theme.colors.surface}
-                        border="thin"
-                        borderColor={Theme.colors.success}
-                        alignment="center middle"
-                        gap="medium"
+                        padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface}
+                        border="thin" borderColor={Theme.colors.success} alignment="center middle" gap="medium"
                         onPress={!processing ? () => onSelectDifficulty('easy') : undefined}
                     >
                         <vstack grow>
-                            <text size="large" weight="bold" color={Theme.colors.success}>EASY</text>
+                            <text size="large" weight="bold" color={Theme.colors.success}>🟢 EASY</text>
                             <text size="small" color={Theme.colors.textDim}>Safe bet — most people know this</text>
                         </vstack>
                         <vstack alignment="center middle" padding="small" cornerRadius="small" backgroundColor="#0A2A0A">
                             <text size="large" weight="bold" color={Theme.colors.success}>+1</text>
-                            <text size="xsmall" color={Theme.colors.textDim}>pt</text>
                         </vstack>
                     </hstack>
 
                     {/* Normal */}
                     <hstack
-                        padding="medium"
-                        cornerRadius="medium"
-                        backgroundColor={Theme.colors.surface}
-                        border="thin"
-                        borderColor={Theme.colors.warning}
-                        alignment="center middle"
-                        gap="medium"
+                        padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface}
+                        border="thin" borderColor={Theme.colors.warning} alignment="center middle" gap="medium"
                         onPress={!processing ? () => onSelectDifficulty('normal') : undefined}
                     >
                         <vstack grow>
-                            <text size="large" weight="bold" color={Theme.colors.warning}>NORMAL</text>
+                            <text size="large" weight="bold" color={Theme.colors.warning}>🟡 NORMAL</text>
                             <text size="small" color={Theme.colors.textDim}>Solid challenge — think it through</text>
                         </vstack>
                         <vstack alignment="center middle" padding="small" cornerRadius="small" backgroundColor="#2A2A0A">
                             <text size="large" weight="bold" color={Theme.colors.warning}>+2</text>
-                            <text size="xsmall" color={Theme.colors.textDim}>pts</text>
                         </vstack>
                     </hstack>
 
                     {/* Hard */}
                     <hstack
-                        padding="medium"
-                        cornerRadius="medium"
-                        backgroundColor={Theme.colors.surface}
-                        border="thin"
-                        borderColor={Theme.colors.danger}
-                        alignment="center middle"
-                        gap="medium"
+                        padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface}
+                        border="thin" borderColor={Theme.colors.danger} alignment="center middle" gap="medium"
                         onPress={!processing ? () => onSelectDifficulty('hard') : undefined}
                     >
                         <vstack grow>
-                            <text size="large" weight="bold" color={Theme.colors.danger}>HARD</text>
+                            <text size="large" weight="bold" color={Theme.colors.danger}>🔴 HARD</text>
                             <text size="small" color={Theme.colors.textDim}>Big risk, big reward — expert level</text>
                         </vstack>
                         <vstack alignment="center middle" padding="small" cornerRadius="small" backgroundColor="#2A0A0A">
                             <text size="large" weight="bold" color={Theme.colors.danger}>+3</text>
-                            <text size="xsmall" color={Theme.colors.textDim}>pts</text>
                         </vstack>
                     </hstack>
 
@@ -384,22 +492,19 @@ Devvit.addCustomPostType({
         }
 
         const round = state.rounds[state.currentRound];
-        const difficultyColors: Record<string, string> = {
-            easy: Theme.colors.success,
-            normal: Theme.colors.warning,
-            hard: Theme.colors.danger,
-        };
         const diffColor = difficultyColors[state.selectedDifficulty || 'normal'];
         const lastPlayerAnswer = state.player.answers[state.player.answers.length - 1];
-        const lastAiAnswer = state.ai.answers[state.ai.answers.length - 1];
         const lastAiDifficulty = state.ai.difficultyChoices[state.ai.difficultyChoices.length - 1];
+        const lastAiCorrect = state.ai.correct[state.ai.correct.length - 1];
+        const lastPlayerCorrect = state.player.correct[state.player.correct.length - 1];
+        const isTiebreaker = (state as any).isTiebreaker && state.currentRound === state.totalRounds - 1;
 
         return (
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="small">
                 <NarrativeHeader
                     title="OUTSMARTED AGAIN"
-                    subtitle={`${round.category} — Round ${state.currentRound + 1}`}
-                    accentColor={accentColor}
+                    subtitle={`${round.category} — ${isTiebreaker ? 'SUDDEN DEATH' : `Round ${state.currentRound + 1}`}`}
+                    accentColor={isTiebreaker ? Theme.colors.danger : accentColor}
                     onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                 />
 
@@ -423,7 +528,7 @@ Devvit.addCustomPostType({
                 <spacer size="small" />
 
                 {/* Question */}
-                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} alignment="center middle">
+                <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={isTiebreaker ? Theme.colors.danger : accentColor} alignment="center middle">
                     <text size="large" weight="bold" color={Theme.colors.text} wrap alignment="center">{q.question}</text>
                 </vstack>
 
@@ -451,13 +556,8 @@ Devvit.addCustomPostType({
                         return (
                             <hstack
                                 key={`opt-${i}`}
-                                padding="small"
-                                cornerRadius="small"
-                                backgroundColor={bgColor}
-                                border="thin"
-                                borderColor={borderColor}
-                                alignment="start middle"
-                                gap="small"
+                                padding="small" cornerRadius="small" backgroundColor={bgColor}
+                                border="thin" borderColor={borderColor} alignment="start middle" gap="small"
                                 onPress={state.phase === 'answering' && !processing ? () => onAnswer(i) : undefined}
                             >
                                 <vstack width="24px" height="24px" cornerRadius="full" backgroundColor={borderColor} alignment="center middle">
@@ -469,19 +569,33 @@ Devvit.addCustomPostType({
                     })}
                 </vstack>
 
-                {/* Result + Next */}
+                {/* ROUND RESULT — Dramatic AI reveal + next */}
                 {state.phase === 'round_result' && (
-                    <vstack padding="small" alignment="center middle" gap="small">
-                        <text size="small" color={lastPlayerAnswer === q.correctIndex ? Theme.colors.success : Theme.colors.danger} weight="bold">
-                            {lastPlayerAnswer === q.correctIndex
-                                ? `Correct! +${DIFFICULTY_POINTS[state.selectedDifficulty || 'normal']} pts`
-                                : `Wrong! Answer: ${q.options[q.correctIndex]}`}
+                    <vstack padding="small" alignment="center middle" gap="small" backgroundColor={Theme.colors.surface} cornerRadius="small">
+                        {/* Player result */}
+                        <text size="medium" weight="bold" color={lastPlayerCorrect ? Theme.colors.success : Theme.colors.danger}>
+                            {lastPlayerCorrect ? `CORRECT! +${DIFFICULTY_POINTS[state.selectedDifficulty || 'normal']} pts` : 'WRONG!'}
                         </text>
+
+                        {/* AI REVEAL — dramatic */}
+                        <hstack gap="small" alignment="center middle" padding="small" cornerRadius="small" backgroundColor="#0A0A1A" border="thin" borderColor={Theme.colors.danger}>
+                            <text size="small" color={Theme.colors.textDim}>AI chose</text>
+                            <text size="small" weight="bold" color={difficultyColors[lastAiDifficulty]}>
+                                {difficultyEmojis[lastAiDifficulty]} {lastAiDifficulty.toUpperCase()}
+                            </text>
+                            <text size="small" color={Theme.colors.textDim}>and</text>
+                            <text size="small" weight="bold" color={lastAiCorrect ? Theme.colors.danger : Theme.colors.success}>
+                                {lastAiCorrect ? `NAILED IT (+${DIFFICULTY_POINTS[lastAiDifficulty]})` : 'MISSED!'}
+                            </text>
+                        </hstack>
+
+                        {/* AI quip */}
                         <text size="xsmall" color={Theme.colors.textDim}>
-                            AI chose {lastAiDifficulty} and {state.ai.correct[state.ai.correct.length - 1] ? 'got it right' : 'got it wrong'}
+                            {getAiQuip(lastAiDifficulty, lastAiCorrect, lastPlayerCorrect, state.player.score - state.ai.score)}
                         </text>
+
                         <button appearance="primary" size="small" onPress={onNext}>
-                            {state.currentRound + 1 >= state.totalRounds ? 'SEE RESULTS' : 'NEXT ROUND'}
+                            {state.currentRound + 1 >= state.totalRounds ? 'SEE RESULTS' : 'NEXT ROUND →'}
                         </button>
                     </vstack>
                 )}

@@ -48,8 +48,35 @@ Devvit.addSchedulerJob({
 });
 
 // ═══════════════════════════════════════════════════════
-// SCREEN TYPE — Multi-screen narrative flow
+// HELPERS — Milestones, juice, and shareable results
 // ═══════════════════════════════════════════════════════
+function getMilestoneTitle(netWorth: number): { title: string; color: string; emoji: string } {
+    if (netWorth >= 10000000) return { title: 'TITAN', color: Theme.colors.gold, emoji: '👑' };
+    if (netWorth >= 1000000) return { title: 'MOGUL', color: '#9400D3', emoji: '💎' };
+    if (netWorth >= 100000) return { title: 'BOSS', color: Theme.colors.primary, emoji: '🔥' };
+    if (netWorth >= 10000) return { title: 'HUSTLER', color: Theme.colors.success, emoji: '📈' };
+    if (netWorth >= 1000) return { title: 'ROOKIE', color: Theme.colors.secondary, emoji: '🌱' };
+    return { title: 'BROKE', color: Theme.colors.textDim, emoji: '😅' };
+}
+
+function getVicReaction(state: any): string {
+    if (!state) return VIC.tagline;
+    if (state.netWorth >= 1000000) return "WE DID IT! MILLIONAIRE GANG! Now let's go for the billion.";
+    if (state.netWorth >= 100000) return "100K?! That's just the warm-up. The real money starts NOW.";
+    if (state.cash < 100) return "We're down bad, but I've been here before. ONE big play and we're back.";
+    if (state.netWorth >= 10000) return "Looking good! But safe money is slow money. Time to YOLO harder.";
+    return VIC.tagline;
+}
+
+function getSalReaction(state: any): string {
+    if (!state) return SAL.tagline;
+    if (state.netWorth >= 1000000) return "One million. Built with patience and discipline. The game respects you now.";
+    if (state.netWorth >= 100000) return "Solid foundation. Keep compounding, keep building. The system works.";
+    if (state.cash < 100) return "The market tests everyone. Stay calm, stay invested. The storm passes.";
+    if (state.netWorth >= 10000) return "Growing nicely. Remember: the tortoise wins. Every single time.";
+    return SAL.tagline;
+}
+
 type Screen = 'intro' | 'scenario' | 'portfolio' | 'leaderboard';
 
 Devvit.addCustomPostType({
@@ -195,12 +222,12 @@ Devvit.addCustomPostType({
                     {/* Character Previews */}
                     <CharacterPanel
                         character={VIC}
-                        dialogue={VIC.tagline}
+                        dialogue={getVicReaction(state)}
                         compact={true}
                     />
                     <CharacterPanel
                         character={SAL}
-                        dialogue={SAL.tagline}
+                        dialogue={getSalReaction(state)}
                         compact={true}
                     />
 
@@ -393,12 +420,17 @@ Devvit.addCustomPostType({
                     leaderboardLabel="🏆 Rankings"
                 />
 
-                {/* Cash & Net Worth Bar */}
+                {/* Cash & Net Worth Bar with Milestone */}
                 <vstack padding="small" backgroundColor={Theme.colors.surface} cornerRadius="small">
                     <hstack alignment="space-between middle" width="100%">
                         <vstack>
                             <text size="small" color={Theme.colors.textDim}>Cash</text>
                             <text size="large" weight="bold" color={Theme.narrative.goldHighlight}>${Math.floor(state.cash).toLocaleString()}</text>
+                        </vstack>
+                        <vstack alignment="center middle">
+                            <text size="xsmall" color={getMilestoneTitle(state.netWorth).color}>
+                                {getMilestoneTitle(state.netWorth).emoji} {getMilestoneTitle(state.netWorth).title}
+                            </text>
                         </vstack>
                         <vstack alignment="end">
                             <text size="small" color={Theme.colors.textDim}>Net Worth</text>
@@ -466,7 +498,19 @@ Devvit.addCustomPostType({
                     ))}
                 </vstack>
 
-                <hstack alignment="center middle" padding="small">
+                {/* Share & Income */}
+                <hstack alignment="center middle" gap="small" padding="small">
+                    <button appearance="secondary" size="small" onPress={async () => {
+                        try {
+                            if (!context.postId) return;
+                            const milestone = getMilestoneTitle(state.netWorth);
+                            await context.reddit.submitComment({
+                                id: context.postId,
+                                text: `GET RICH LAZY\n${milestone.emoji} ${milestone.title}\nNet Worth: $${Math.floor(state.netWorth).toLocaleString()}\nPassive Income: $${hourlyIncome.toLocaleString()}/hr\n${hourlyIncome >= 1000 ? '💰 Money printer go BRRR' : '🌱 Building the empire...'}`
+                            });
+                            context.ui.showToast('Portfolio shared!');
+                        } catch (e) { context.ui.showToast('Could not share'); }
+                    }}>Share Portfolio</button>
                     <text size="small" color={Theme.colors.textDim}>{Theme.brand.footer}</text>
                 </hstack>
             </vstack>

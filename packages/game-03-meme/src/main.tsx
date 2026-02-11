@@ -35,6 +35,31 @@ Devvit.addSettings([
     },
 ]);
 
+// Daily themes rotate automatically
+const DAILY_THEMES = [
+    { name: 'Cyberpunk Chaos', prompt: 'cyberpunk neon dystopia style', emoji: '🌃' },
+    { name: 'Nature Strikes Back', prompt: 'nature reclaiming technology style', emoji: '🌿' },
+    { name: 'Retro Pixel', prompt: 'retro pixel art 8-bit style', emoji: '👾' },
+    { name: 'Oil Painting Masters', prompt: 'classical oil painting renaissance style', emoji: '🎨' },
+    { name: 'Cosmic Horror', prompt: 'cosmic horror lovecraftian style', emoji: '🌌' },
+    { name: 'Wholesome Vibes', prompt: 'wholesome heartwarming kawaii style', emoji: '💖' },
+    { name: 'Street Art', prompt: 'urban street art graffiti banksy style', emoji: '🎭' },
+];
+
+function getDailyTheme(): typeof DAILY_THEMES[0] {
+    const dayIndex = Math.floor(Date.now() / 86400000) % DAILY_THEMES.length;
+    return DAILY_THEMES[dayIndex];
+}
+
+const STYLE_OPTIONS = [
+    { label: 'Cyberpunk', suffix: ', cyberpunk neon aesthetic, dark futuristic' },
+    { label: 'Oil Painting', suffix: ', classical oil painting style, rich colors' },
+    { label: 'Neon Pop', suffix: ', neon pop art style, vibrant colors, bold' },
+    { label: 'Photorealistic', suffix: ', photorealistic, 8k, cinematic lighting' },
+    { label: 'Anime', suffix: ', anime style, detailed illustration, manga' },
+    { label: 'Pixel Art', suffix: ', pixel art retro 8-bit style' },
+];
+
 Devvit.addMenuItem({
     label: 'Create Meme Wars Post',
     location: 'subreddit',
@@ -60,18 +85,32 @@ Devvit.addCustomPostType({
     render: (context) => {
         const [showSplash, setShowSplash] = useState(true);
         const [status, setStatus] = useState<string>('Ready to create');
+        const [selectedStyle, setSelectedStyle] = useState<number>(0);
         const queue = new MemeQueue(context);
 
         const [feed, setFeed] = useState<any[]>([]);
         const [refreshNonce, setRefreshNonce] = useState<number>(0);
         const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
         const [mySubmissions, setMySubmissions] = useState<string[]>([]);
+        const [feedView, setFeedView] = useState<'hot' | 'new'>('hot');
 
         const SUBMIT_COOLDOWN_MS = 30_000;
+        const dailyTheme = getDailyTheme();
 
         const promptForm = useForm(
             {
-                fields: [{ type: 'string' as const, name: 'prompt', label: 'Meme Concept', placeholder: 'A cyberpunk cat ruling Wall Street...' }],
+                fields: [
+                    { type: 'string' as const, name: 'prompt', label: 'Meme Concept', placeholder: 'A cyberpunk cat ruling Wall Street...' },
+                    {
+                        type: 'select' as const, name: 'style', label: 'Art Style',
+                        options: STYLE_OPTIONS.map((s, i) => ({ label: s.label, value: String(i) })),
+                        defaultValue: ['0'],
+                    },
+                    {
+                        type: 'boolean' as const, name: 'useTheme', label: `Use daily theme: ${dailyTheme.emoji} ${dailyTheme.name}`,
+                        defaultValue: false,
+                    },
+                ],
                 title: '⚔️ Forge Your Meme',
                 acceptLabel: 'ENTER THE ARENA!'
             },
@@ -83,9 +122,23 @@ Devvit.addCustomPostType({
                     setStatus(`Cooldown: ${remaining}s`);
                     return;
                 }
+
+                // Build full prompt with style and optional daily theme
+                const styleIdx = Number(values.style?.[0] || '0');
+                const style = STYLE_OPTIONS[styleIdx] || STYLE_OPTIONS[0];
+                let fullPrompt = values.prompt + style.suffix;
+                if (values.useTheme) {
+                    fullPrompt += `, ${dailyTheme.prompt}`;
+                }
+
                 setStatus('⚡ Forging your meme...');
-                const jobId = await queue.enqueueJob(context.userId || 'anon', values.prompt);
-                // Trigger the scheduler to process the queue (with fallback timing)
+                const jobId = await queue.enqueueJob(context.userId || 'anon', fullPrompt);
+
+                // Track if using daily theme for bonus
+                if (values.useTheme) {
+                    await context.redis.hSet('meme:theme_submissions', { [jobId]: dailyTheme.name });
+                }
+
                 try {
                     await context.scheduler.runJob({ name: 'process_queue', runAt: new Date(Date.now() + 2000) });
                 } catch (e) {
@@ -94,7 +147,7 @@ Devvit.addCustomPostType({
                 }
                 setLastSubmitTime(Date.now());
                 setMySubmissions(prev => [...prev, values.prompt!]);
-                setStatus(`Queued (${jobId})! AI is generating... tap 🔄 in ~30s`);
+                setStatus(`Forging with ${style.label} style... tap 🔄 in ~30s`);
             }
         );
 
@@ -106,7 +159,6 @@ Devvit.addCustomPostType({
             return { posts };
         };
 
-        // Load feed and sync to local state only when async call completes.
         const { loading } = useAsync(loadFeed, {
             depends: refreshNonce,
             finally: (data) => {
@@ -126,6 +178,9 @@ Devvit.addCustomPostType({
             setFeed(newFeed);
 
             await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
+
+            // Track voter's total votes for badge
+            await context.redis.incrBy(`user:${context.userId}:vote_count`, 1);
 
             const targetMeme = feed.find(p => p.id === memeId);
             if (targetMeme?.userId) {
@@ -184,18 +239,19 @@ Devvit.addCustomPostType({
                     leaderboardLabel="👑 Lords"
                 />
 
-                {/* Arena Master */}
-                <CharacterPanel
-                    character={MEME_LORD}
-                    dialogue="The crowd awaits. Forge your creation and let them judge."
-                    compact={true}
-                />
+                {/* Daily Theme Banner */}
+                <hstack padding="small" cornerRadius="small" backgroundColor="#1A1A0A" border="thin" borderColor={Theme.colors.gold} alignment="center middle" gap="small">
+                    <text size="small" color={Theme.colors.gold} weight="bold">{dailyTheme.emoji} DAILY THEME:</text>
+                    <text size="small" color={Theme.colors.gold}>{dailyTheme.name}</text>
+                    <spacer grow />
+                    <text size="xsmall" color={Theme.colors.textDim}>+2x votes!</text>
+                </hstack>
 
                 {/* Create Section */}
                 <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={MEME_LORD.accentColor}>
                     <hstack alignment="space-between middle">
                         <vstack>
-                            <text color={Theme.colors.text} weight="bold" size="small">⚔️ Enter the Arena</text>
+                            <text color={Theme.colors.text} weight="bold" size="small">⚔️ Forge Your Creation</text>
                             <text color={Theme.colors.textDim} size="xsmall">{status}</text>
                         </vstack>
                         <button onPress={() => context.ui.showForm(promptForm)} appearance="primary" size="small">Create Meme</button>
@@ -205,9 +261,9 @@ Devvit.addCustomPostType({
                 {/* Your Pending Submissions */}
                 {mySubmissions.length > 0 && (
                     <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={Theme.colors.success}>
-                        <text color={Theme.colors.success} weight="bold" size="small">Your Submissions (generating...)</text>
+                        <text color={Theme.colors.success} weight="bold" size="small">Your Creations (generating...)</text>
                         {mySubmissions.map((prompt, i) => (
-                            <text key={`sub-${i}`} size="xsmall" color={Theme.colors.textDim} wrap>• {prompt}</text>
+                            <text key={`sub-${i}`} size="xsmall" color={Theme.colors.textDim} wrap>⚡ {prompt}</text>
                         ))}
                         <text size="xsmall" color={Theme.colors.textDim}>Tap 🔄 below to check if ready</text>
                     </vstack>
@@ -218,26 +274,39 @@ Devvit.addCustomPostType({
                 {/* Gallery Feed */}
                 <vstack cornerRadius="small" backgroundColor={Theme.colors.surface} grow padding="small">
                     <hstack alignment="space-between middle">
-                        <text color={Theme.narrative.goldHighlight} weight="bold" size="small">🏆 ARENA COMBATANTS</text>
+                        <hstack gap="small">
+                            <button
+                                appearance={feedView === 'hot' ? 'primary' : 'plain'}
+                                size="small"
+                                onPress={() => setFeedView('hot')}
+                            >🔥 Hot</button>
+                            <button
+                                appearance={feedView === 'new' ? 'primary' : 'plain'}
+                                size="small"
+                                onPress={() => setFeedView('new')}
+                            >✨ New</button>
+                        </hstack>
                         <button appearance="plain" size="small" onPress={() => refreshFeed()}>🔄</button>
                     </hstack>
                     <spacer size="small" />
 
                     {(feed && feed.length > 0) ? (
-                        feed.slice(0, 4).map((meme) => (
+                        feed.slice(0, 4).map((meme, idx) => (
                             <hstack
                                 key={meme.id}
                                 backgroundColor={Theme.colors.background}
                                 padding="small"
                                 cornerRadius="small"
                                 border="thin"
-                                borderColor={Theme.colors.surfaceHighlight}
+                                borderColor={idx === 0 ? Theme.colors.gold : Theme.colors.surfaceHighlight}
                                 alignment="center middle"
                                 gap="small"
                             >
+                                {idx === 0 && <text size="small" color={Theme.colors.gold}>👑</text>}
                                 <image url={meme.url || "https://placehold.co/64x64/1A1A1B/FF4500?text=MEME"} imageHeight={64} imageWidth={64} resizeMode="cover" />
                                 <vstack grow>
-                                    <text size="small" color={Theme.colors.text} wrap>{meme.prompt}</text>
+                                    <text size="small" color={Theme.colors.text} wrap>{meme.prompt?.slice(0, 60)}</text>
+                                    <text size="xsmall" color={Theme.colors.textDim}>#{idx + 1} in arena</text>
                                 </vstack>
                                 <vstack alignment="center middle" gap="small">
                                     <button appearance="plain" size="small" onPress={() => onVote(meme.id, 1)}>⬆️</button>
@@ -248,7 +317,8 @@ Devvit.addCustomPostType({
                         ))
                     ) : (
                         <vstack alignment="center middle" grow>
-                            <text color={Theme.colors.textDim} size="small">The arena is empty. Be the first to enter!</text>
+                            <text color={MEME_LORD.accentColor} size="medium" weight="bold">The arena awaits.</text>
+                            <text color={Theme.colors.textDim} size="small">Be the first gladiator to enter!</text>
                         </vstack>
                     )}
                 </vstack>

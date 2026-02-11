@@ -163,7 +163,42 @@ export class DuelServer {
         state.currentQuestion = null;
 
         if (state.currentRound >= state.totalRounds) {
+            // TIEBREAKER: If scores tied, add one sudden death round
+            if (state.player.score === state.ai.score && state.totalRounds <= 6) {
+                // Generate one more round
+                const cats = state.categories.length > 0 ? state.categories : [...CATEGORIES];
+                const tiebreakCat = cats[Math.floor(Math.random() * cats.length)];
+                const extraRounds = this.generateRounds(1, [tiebreakCat], state.usedQuestionIds);
+                if (extraRounds.length > 0) {
+                    state.rounds.push(extraRounds[0]);
+                    state.totalRounds += 1;
+                    state.phase = 'category_reveal';
+                    (state as any).isTiebreaker = true;
+                    await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
+                    return state;
+                }
+            }
+
             state.phase = 'game_over';
+
+            // Streak tracking
+            const streakKey = `user:${userId}:duel_streak`;
+            const won = state.player.score > state.ai.score;
+            let streak = 0;
+            if (won) {
+                streak = await this.context.redis.incrBy(streakKey, 1);
+            } else {
+                await this.context.redis.set(streakKey, '0');
+            }
+            // Store best streak
+            const bestStreakKey = `user:${userId}:duel_best_streak`;
+            const bestRaw = await this.context.redis.get(bestStreakKey);
+            const best = Number(bestRaw || '0');
+            if (streak > best) {
+                await this.context.redis.set(bestStreakKey, String(streak));
+            }
+            // Store total games
+            await this.context.redis.incrBy(`user:${userId}:duel_games`, 1);
 
             // Sync leaderboard
             try {
@@ -174,7 +209,7 @@ export class DuelServer {
                     if (user) username = user.username;
                 } catch (e) { }
                 const winsKey = `user:${userId}:trivia_wins`;
-                const totalWins = state.player.score > state.ai.score
+                const totalWins = won
                     ? await this.context.redis.incrBy(winsKey, 1)
                     : Number(await this.context.redis.get(winsKey) || '0');
                 await lb.submitScore(userId, username, totalWins);
@@ -194,6 +229,21 @@ export class DuelServer {
         state.phase = 'difficulty_select';
         await this.context.redis.set(this.getKey(userId), JSON.stringify(state));
         return state;
+    }
+
+    async getPlayerStats(userId: string): Promise<{ wins: number; streak: number; bestStreak: number; games: number }> {
+        const [winsRaw, streakRaw, bestRaw, gamesRaw] = await Promise.all([
+            this.context.redis.get(`user:${userId}:trivia_wins`),
+            this.context.redis.get(`user:${userId}:duel_streak`),
+            this.context.redis.get(`user:${userId}:duel_best_streak`),
+            this.context.redis.get(`user:${userId}:duel_games`),
+        ]);
+        return {
+            wins: Number(winsRaw || '0'),
+            streak: Number(streakRaw || '0'),
+            bestStreak: Number(bestRaw || '0'),
+            games: Number(gamesRaw || '0'),
+        };
     }
 
     async resetGame(userId: string): Promise<GameSessionState> {

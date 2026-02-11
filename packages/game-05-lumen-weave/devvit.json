@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "ya-ma-sua-lik-it",
+  "blocks": {
+    "entry": "src/main.tsx"
+  },
+  "permissions": {
+    "redis": true,
+    "reddit": {
+      "enable": true
+    }
+  },
+  "marketingAssets": {
+    "icon": "assets/icon.png"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ya-ma-sua-lik-it",
+  "version": "0.0.0",
+  "dependencies": {
+    "@devvit/public-api": "0.12.11",
+    "@devvit/redis": "0.12.11",
+    "shared": "file:../shared"
+  },
+  "main": "src/main.tsx",
+  "type": "module",
+  "private": true,
+  "license": "BSD-3-Clause"
+}

@@ -2,7 +2,7 @@
 
 **"Bios + Logos" | Daily Loops | Serverless Agential Systems**
 
-This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**, designed for a high-retention "Daily Loop".
+This monorepo contains 5 concurrent serverless games built on **Reddit Devvit**, designed for a high-retention "Daily Loop".
 
 ## 🎮 The Games
 
@@ -14,6 +14,8 @@ This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**,
     *   *Tech*: Async Job Queues, Image Generation.
 4.  **AI Duel (Combat)**: Turn-based RPG vs Gemini 2.0.
     *   *Tech*: LLM Integration, Complex State Machines.
+5.  **Lumen Weave (Puzzle)**: A nonlinear chroma-field puzzle with mirror-echo mechanics.
+    *   *Tech*: Deterministic daily seeds, grid transforms, Redis-backed progression.
 
 ## 🏗 Architecture
 
@@ -33,6 +35,7 @@ This monorepo contains 4 concurrent serverless games built on **Reddit Devvit**,
     cd ../game-02-trivia && npm install
     cd ../game-03-meme && npm install
     cd ../game-04-duel && npm install
+    cd ../game-05-lumen-weave && npm install
     ```
 
 2.  **Run canonical smoke checks from repo root**:

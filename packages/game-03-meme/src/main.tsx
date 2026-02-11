@@ -24,14 +24,14 @@ Devvit.addSettings([
         label: 'Hugging Face API Token',
         type: 'string',
         isSecret: true,
-        scope: SettingScope.Installation,
+        scope: SettingScope.App,
     },
     {
         name: 'REPLICATE_API_TOKEN',
         label: 'Replicate API Token (Flux.1)',
         type: 'string',
         isSecret: true,
-        scope: SettingScope.Installation,
+        scope: SettingScope.App,
     },
 ]);
 

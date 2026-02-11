@@ -159,11 +159,18 @@ Devvit.addCustomPostType({
 
         const loadFeed = async () => {
             try {
-                const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
-                if (!ids || ids.length === 0) return { posts: [] };
-                const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
-                const posts = postsRaw.filter(p => !!p).map(p => { try { return JSON.parse(p!); } catch { return null; } }).filter(Boolean);
-                return { posts };
+                return await Promise.race([
+                    (async () => {
+                        const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
+                        if (!ids || ids.length === 0) return { posts: [] };
+                        const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
+                        const posts = postsRaw.filter(p => !!p).map(p => { try { return JSON.parse(p!); } catch { return null; } }).filter(Boolean);
+                        return { posts };
+                    })(),
+                    new Promise<{ posts: any[] }>((resolve) =>
+                        setTimeout(() => resolve({ posts: [] }), 10000)
+                    ),
+                ]);
             } catch (e) {
                 console.error('Failed to load meme feed:', e);
                 return { posts: [] };

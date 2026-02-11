@@ -240,19 +240,27 @@ Devvit.addCustomPostType({
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
         const [lbLoading, setLbLoading] = useState(false);
 
+        // Wrapped in Promise.race to prevent infinite loading if Redis/API hangs
         const { data, loading, error } = useAsync(async () => {
-            const played = await context.redis.hGet('daily_participants', userId);
-            const rawTrends = await context.redis.get('daily_trends');
-            let trends: Trend[];
-            if (rawTrends) {
-                trends = JSON.parse(rawTrends);
-            } else {
-                trends = await proxy.fetchDailyTrends(12);
-                await context.redis.set('daily_trends', JSON.stringify(trends));
-            }
-            const statsRaw = await context.redis.get(`user:${userId}:hive_stats`);
-            const stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalScore: 0, gamesPlayed: 0, bestScore: 0, maxStreak: 0 };
-            return { played: !!played, trends, stats };
+            return Promise.race([
+                (async () => {
+                    const played = await context.redis.hGet('daily_participants', userId);
+                    const rawTrends = await context.redis.get('daily_trends');
+                    let trends: Trend[];
+                    if (rawTrends) {
+                        trends = JSON.parse(rawTrends);
+                    } else {
+                        trends = await proxy.fetchDailyTrends(12);
+                        await context.redis.set('daily_trends', JSON.stringify(trends));
+                    }
+                    const statsRaw = await context.redis.get(`user:${userId}:hive_stats`);
+                    const stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalScore: 0, gamesPlayed: 0, bestScore: 0, maxStreak: 0 };
+                    return { played: !!played, trends, stats };
+                })(),
+                new Promise<any>((resolve) =>
+                    setTimeout(() => resolve(null), 10000)
+                ),
+            ]);
         });
 
         const startGauntlet = () => {

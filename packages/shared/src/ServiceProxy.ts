@@ -205,7 +205,22 @@ export class ServiceProxy {
             }
         }
 
-        // 3. Final fallback: themed placeholder
+        // 3. Pollinations.ai — free, keyless AI image generation
+        try {
+            const encoded = encodeURIComponent(prompt.slice(0, 200));
+            const pollinationsUrl = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=512&nologo=true&seed=${Date.now()}`;
+            // Verify the URL resolves (Pollinations generates on first hit)
+            const pollResp = await fetchWithTimeout(pollinationsUrl, { method: 'GET' }, 30000);
+            if (pollResp.ok) {
+                console.log(`Pollinations generated image for job ${jobId}`);
+                return pollinationsUrl;
+            }
+            console.warn(`Pollinations HTTP ${pollResp.status}`);
+        } catch (e) {
+            console.error('Pollinations Error:', e);
+        }
+
+        // 4. Final fallback: themed placeholder
         return `https://placehold.co/512x512/1A1A1B/FF4500?text=Meme+${jobId}`;
     }
 

@@ -109,17 +109,30 @@ Devvit.addCustomPostType({
         const [localPrestigeLevel, setLocalPrestigeLevel] = useState<number | null>(null);
 
         // Load initial game state + scenario + today's choice status + prestige
+        // Wrapped in Promise.race to prevent infinite loading if Redis/API hangs
         const { data: initialData, loading } = useAsync<any>(async () => {
-            const state = await server.getUserState(userId);
-            const scenario = await server.getDailyScenario();
-            const todayChoice = await server.hasChosenToday(userId);
-            const prestigeLevel = await server.getPrestigeLevel(userId);
-            return {
-                state: state as unknown as Record<string, any>,
-                scenario,
-                todayChoice,
-                prestigeLevel,
-            };
+            return Promise.race([
+                (async () => {
+                    const state = await server.getUserState(userId);
+                    const scenario = await server.getDailyScenario();
+                    const todayChoice = await server.hasChosenToday(userId);
+                    const prestigeLevel = await server.getPrestigeLevel(userId);
+                    return {
+                        state: state as unknown as Record<string, any>,
+                        scenario,
+                        todayChoice,
+                        prestigeLevel,
+                    };
+                })(),
+                new Promise<any>((resolve) =>
+                    setTimeout(() => resolve({
+                        state: { cash: 1000, lastTick: Date.now(), netWorth: 1000, assets: {}, advisors: [] },
+                        scenario: null,
+                        todayChoice: null,
+                        prestigeLevel: 0,
+                    }), 10000)
+                ),
+            ]);
         });
 
         const state = localState || initialData?.state;

@@ -112,14 +112,32 @@ Devvit.addCustomPostType({
         const [lbLoading, setLbLoading] = useState(false);
         const [challengeBoard, setChallengeBoard] = useState<any[]>([]);
 
+        // Wrapped in Promise.race to prevent infinite loading if Redis/API hangs
         const { data: initialData, loading, error } = useAsync<any>(async () => {
-            const state = await server.getGameState(userId);
-            const stats = await server.getPlayerStats(userId);
-            return { state, stats } as any;
+            return Promise.race([
+                (async () => {
+                    const state = await server.getGameState(userId);
+                    const stats = await server.getPlayerStats(userId);
+                    // If game is already over, load challenge board too
+                    let board: any[] = [];
+                    if (state.phase === 'game_over' && context.postId) {
+                        board = await server.getPostChallengeBoard(context.postId);
+                    }
+                    return { state, stats, board } as any;
+                })(),
+                new Promise<any>((resolve) =>
+                    setTimeout(() => resolve(null), 10000)
+                ),
+            ]);
         });
 
         const state: DuelState | null = localState?.state || initialData?.state;
         const stats = localState?.stats || initialData?.stats || { wins: 0, streak: 0, bestStreak: 0, games: 0 };
+
+        // Load challenge board from initial data if available
+        if (initialData?.board?.length > 0 && challengeBoard.length === 0) {
+            setChallengeBoard(initialData.board);
+        }
 
         const refreshStats = async () => {
             try {
@@ -386,32 +404,58 @@ Devvit.addCustomPostType({
                     </vstack>
 
                     {/* Challenge Board — other players on this post */}
-                    {challengeBoard.length > 0 && (
-                        <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} width="100%" gap="small">
-                            <text size="small" weight="bold" color={accentColor}>Challenge Board ({challengeBoard.length} players)</text>
-                            {challengeBoard.slice(0, 5).map((entry: any, i: number) => (
+                    <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} width="100%" gap="small">
+                        <text size="small" weight="bold" color={accentColor}>Challenge Board {challengeBoard.length > 0 ? `(${challengeBoard.length} players)` : ''}</text>
+                        {challengeBoard.length > 0 ? (
+                            challengeBoard.slice(0, 5).map((entry: any, i: number) => (
                                 <hstack key={`cb-${i}`} gap="small" alignment="center middle">
                                     <text size="xsmall" color={i === 0 ? Theme.colors.gold : Theme.colors.textDim}>{i === 0 ? '👑' : `#${i + 1}`}</text>
                                     <text size="xsmall" color={Theme.colors.text}>{entry.username}</text>
                                     <spacer grow />
                                     <text size="xsmall" weight="bold" color={entry.won ? Theme.colors.success : Theme.colors.danger}>{entry.score}pts {entry.won ? 'W' : 'L'}</text>
                                 </hstack>
-                            ))}
-                        </vstack>
-                    )}
+                            ))
+                        ) : (
+                            <text size="xsmall" color={Theme.colors.textDim}>You're the first! Your score is now on the board.</text>
+                        )}
+                    </vstack>
+
+                    {/* Share Grid Preview */}
+                    <vstack padding="small" cornerRadius="small" backgroundColor="#0A0A1A" border="thin" borderColor={accentColor} width="100%">
+                        <text size="xsmall" color={accentColor} weight="bold">YOUR BATTLE GRID</text>
+                        {state.rounds.map((round, i) => {
+                            if (i >= state.player.correct.length) return null;
+                            const pOk = state.player.correct[i];
+                            const aOk = state.ai.correct[i];
+                            return (
+                                <text key={`g-${i}`} size="xsmall" color={Theme.colors.textDim}>
+                                    R{i + 1} {categoryEmojis[round.category] || '🎯'} You:{pOk ? '✅' : '❌'} AI:{aOk ? '✅' : '❌'}
+                                </text>
+                            );
+                        })}
+                        <text size="xsmall" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
+                            {won ? '🏆 VICTORY' : tied ? '🤝 TIE' : '💀 DEFEAT'} {state.player.score}-{state.ai.score}
+                        </text>
+                    </vstack>
 
                     <hstack gap="small" alignment="center middle">
                         <button appearance="primary" size="medium" onPress={onReset}>PLAY AGAIN</button>
                         <button appearance="secondary" size="small" onPress={async () => {
                             try {
-                                if (!context.postId) return;
+                                if (!context.postId) {
+                                    context.ui.showToast('No post context — open from a post');
+                                    return;
+                                }
                                 await context.reddit.submitComment({
                                     id: context.postId,
                                     text: emojiGrid
                                 });
-                                context.ui.showToast('Battle grid shared!');
-                            } catch (e) { context.ui.showToast('Could not share'); }
-                        }}>Share Grid</button>
+                                context.ui.showToast('Battle grid shared as comment!');
+                            } catch (e) {
+                                console.error('Share failed:', e);
+                                context.ui.showToast('Share failed — try again');
+                            }
+                        }}>Share</button>
                         <button appearance="secondary" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>Rankings</button>
                     </hstack>
                 </vstack>

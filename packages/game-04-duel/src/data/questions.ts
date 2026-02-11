@@ -1,7 +1,7 @@
 /**
  * Trivia Question Bank for Duel Game
  *
- * ~420 questions across 6 categories and 3 difficulty levels.
+ * ~816 questions across 6 categories and 3 difficulty levels.
  * Each question has 4 plausible options with one correct answer.
  */
 

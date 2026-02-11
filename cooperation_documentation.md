@@ -226,3 +226,19 @@
   - `gh pr create --base main --head codex/game-05-lumen-weave --title "Add Lumen Weave (game-05) and integrate release flow" --body-file /tmp/codex_game05_pr_body.md`
 - **Tests:** none (operational/github workflow step).
 - **Git/Worktree:** Worktree `./.worktrees/codex-game-05-lumen-weave` on branch `codex/game-05-lumen-weave`.
+
+### [2026-02-11 01:15] - Post-Merge Cleanup for Game 05 (Agent: Codex)
+- **Intent:** Continue after PR merge while preserving unrelated local edits; perform safe branch/worktree cleanup.
+- **Outcome:**
+  - Left existing unrelated local change untouched: `packages/game-02-trivia/src/main.tsx`.
+  - Verified PR branch still existed on remote and local.
+  - Remote branch deletion attempt was blocked by repository rules (`GH013: Cannot delete this branch`).
+  - Removed local worktree `./.worktrees/codex-game-05-lumen-weave` and deleted local branch `codex/game-05-lumen-weave` successfully.
+- **Commands:**
+  - `git ls-remote --heads origin codex/game-05-lumen-weave`
+  - `git worktree list`
+  - `git push origin --delete codex/game-05-lumen-weave` (blocked by repo rule)
+  - `git worktree remove .worktrees/codex-game-05-lumen-weave`
+  - `git branch -d codex/game-05-lumen-weave`
+- **Tests:** none (git workflow/cleanup only).
+- **Git/Worktree:** Main checkout at `/Users/cosmopax/Desktop/projx/reddit_hackathon_games`; remaining worktree `./.worktrees/codex-solo-completion`.

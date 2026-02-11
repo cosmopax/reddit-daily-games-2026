@@ -6,7 +6,7 @@ import {
 } from './data/questions';
 import {
     GameSessionState, RoundConfig, createNewSession,
-    getPointsForDifficulty, getAiDifficulty, simulateAiAnswer,
+    getPointsForDifficulty, getAiDifficulty, getAdaptiveAiDifficulty, simulateAiAnswer,
 } from './models/GameSession';
 
 // Re-export for backward compatibility with main.tsx
@@ -114,8 +114,8 @@ export class DuelServer {
         state.currentQuestion = round.questionsByDifficulty[difficulty];
         state.phase = 'answering';
 
-        // AI also picks difficulty
-        const aiDiff = getAiDifficulty();
+        // AI picks difficulty adaptively based on score gap
+        const aiDiff = getAdaptiveAiDifficulty(state.player.score, state.ai.score, state.currentRound);
         const aiQuestion = round.questionsByDifficulty[aiDiff];
         const aiAnswer = simulateAiAnswer(aiQuestion.correctIndex, aiQuestion.options.length, aiDiff);
 

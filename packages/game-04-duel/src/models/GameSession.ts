@@ -88,6 +88,32 @@ export function getAiDifficulty(): Difficulty {
     return 'hard';
 }
 
+/** Adaptive AI: shifts toward harder difficulties when losing, easier when winning */
+export function getAdaptiveAiDifficulty(playerScore: number, aiScore: number, round: number): Difficulty {
+    const gap = playerScore - aiScore;
+    const roll = Math.random();
+
+    if (gap >= 4) {
+        // Player dominating → AI goes aggressive
+        if (roll < 0.10) return 'easy';
+        if (roll < 0.40) return 'normal';
+        return 'hard'; // 60% hard
+    } else if (gap >= 2) {
+        // Player ahead → AI leans harder
+        if (roll < 0.15) return 'easy';
+        if (roll < 0.50) return 'normal';
+        return 'hard'; // 50% hard
+    } else if (gap <= -3) {
+        // AI dominating → plays conservatively (cocky)
+        if (roll < 0.45) return 'easy';
+        if (roll < 0.80) return 'normal';
+        return 'hard'; // 20% hard
+    }
+
+    // Close game → default weights
+    return getAiDifficulty();
+}
+
 export function simulateAiAnswer(correctIndex: number, numOptions: number, difficulty: Difficulty): number {
     // AI accuracy scales with difficulty chosen:
     // easy: 80% correct, normal: 60%, hard: 40%

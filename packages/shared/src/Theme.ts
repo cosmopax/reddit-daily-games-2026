@@ -2,7 +2,15 @@ export const Theme = {
     brand: {
         name: 'cosmopax',
         motto: 'Total Gamification',
-        footer: 'cosmopax | Total Gamification',
+        footer: 'cosmopax labs | 6 games to explore',
+        portfolioGames: [
+            { name: 'Get Rich Lazy', emoji: '💰' },
+            { name: 'Hive Mind', emoji: '🧠' },
+            { name: 'Meme Wars', emoji: '🎨' },
+            { name: 'Outsmarted Again', emoji: '⚔️' },
+            { name: 'Cellverse', emoji: '🧬' },
+            { name: 'The Commons', emoji: '🎭' },
+        ],
     },
     colors: {
         // Base

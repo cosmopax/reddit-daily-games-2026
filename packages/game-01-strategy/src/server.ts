@@ -59,11 +59,13 @@ export class GameStrategyServer {
             } catch (e) { }
         }
 
-        // Lazy Evaluation: Apply pending income and persist
+        // Lazy Evaluation: Apply pending income with prestige multiplier
         const now = Date.now();
         const elapsedHours = (now - (lastTick as number)) / 3600000;
+        const prestigeLevel = await this.getPrestigeLevel(userId);
+        const prestigeMult = this.getPrestigeMultiplier(prestigeLevel);
         if (elapsedHours > 0 && hourlyIncome > 0) {
-            const earned = hourlyIncome * elapsedHours;
+            const earned = hourlyIncome * elapsedHours * prestigeMult;
             cash += earned;
         }
 
@@ -434,5 +436,45 @@ RULES for multiplierRange:
     async getLeaderboard() {
         const lb = new Leaderboard(this.context, 'game1_strategy');
         return lb.getTop(10);
+    }
+
+    // ═══════════════════════════════════════════
+    // PRESTIGE SYSTEM — Reset with permanent bonuses
+    // ═══════════════════════════════════════════
+
+    async getPrestigeLevel(userId: string): Promise<number> {
+        const raw = await this.context.redis.get(`prestige:${userId}`);
+        return Number(raw || '0');
+    }
+
+    /** Income multiplier from prestige: 1.0 + (level * 0.5) */
+    getPrestigeMultiplier(level: number): number {
+        return 1.0 + (level * 0.5);
+    }
+
+    /**
+     * Prestige resets the player: cash → $1000, all assets → 0.
+     * In return, they gain a permanent income multiplier.
+     * Requires TITAN status ($10M+ net worth).
+     */
+    async prestige(userId: string): Promise<{ newLevel: number; multiplier: number } | null> {
+        const state = await this.getUserState(userId);
+        if (state.netWorth < 10_000_000) return null;
+
+        const currentLevel = await this.getPrestigeLevel(userId);
+        const newLevel = currentLevel + 1;
+
+        // Reset state
+        state.cash = 1000;
+        state.lastTick = Date.now();
+        Object.keys(state.assets).forEach(key => {
+            state.assets[key as AssetType] = 0;
+        });
+        state.netWorth = 1000;
+
+        await this.saveUserState(userId, state);
+        await this.context.redis.set(`prestige:${userId}`, String(newLevel));
+
+        return { newLevel, multiplier: this.getPrestigeMultiplier(newLevel) };
     }
 }

@@ -152,11 +152,16 @@ Devvit.addCustomPostType({
         );
 
         const loadFeed = async () => {
-            const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
-            if (!ids || ids.length === 0) return { posts: [] };
-            const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
-            const posts = postsRaw.filter(p => !!p).map(p => JSON.parse(p!));
-            return { posts };
+            try {
+                const ids = await context.redis.zRange('meme:leaderboard', 0, 9, { by: 'rank', reverse: true });
+                if (!ids || ids.length === 0) return { posts: [] };
+                const postsRaw = await context.redis.hMGet('meme:data', ids.map(id => id.member));
+                const posts = postsRaw.filter(p => !!p).map(p => { try { return JSON.parse(p!); } catch { return null; } }).filter(Boolean);
+                return { posts };
+            } catch (e) {
+                console.error('Failed to load meme feed:', e);
+                return { posts: [] };
+            }
         };
 
         const { loading } = useAsync(loadFeed, {
@@ -167,33 +172,53 @@ Devvit.addCustomPostType({
         });
 
         const refreshFeed = async () => {
+            // Also poll status of last submitted job
+            if (mySubmissions.length > 0) {
+                try {
+                    const jobs = await context.redis.hGetAll('meme:job_status');
+                    if (jobs) {
+                        const anyComplete = Object.values(jobs).some(s => s === 'complete');
+                        const anyFailed = Object.values(jobs).some(s => s === 'failed');
+                        if (anyComplete) {
+                            setStatus('Your meme is in the arena!');
+                            setMySubmissions([]);
+                        } else if (anyFailed) {
+                            setStatus('Generation failed — try again with a different prompt');
+                        }
+                    }
+                } catch (e) { /* polling is best-effort */ }
+            }
             setRefreshNonce((prev) => prev + 1);
         };
 
         const onVote = async (memeId: string, delta: number) => {
+            // Optimistic UI update
             const newFeed = feed.map(p => {
                 if (p.id === memeId) return { ...p, votes: (p.votes || 0) + delta };
                 return p;
             });
             setFeed(newFeed);
 
-            await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
+            try {
+                await context.redis.zIncrBy('meme:leaderboard', memeId, delta);
+                await context.redis.incrBy(`user:${context.userId}:vote_count`, 1);
 
-            // Track voter's total votes for badge
-            await context.redis.incrBy(`user:${context.userId}:vote_count`, 1);
-
-            const targetMeme = feed.find(p => p.id === memeId);
-            if (targetMeme?.userId) {
-                const authorId = targetMeme.userId;
-                const authorScoreKey = `user:${authorId}:meme_score`;
-                const newScore = await context.redis.incrBy(authorScoreKey, delta);
-                const lb = new Leaderboard(context, 'game3_meme');
-                let username = 'Meme Artist';
-                try {
-                    const u = await context.reddit.getUserById(authorId);
-                    if (u) username = u.username;
-                } catch (e) { }
-                await lb.submitScore(authorId, username, newScore);
+                const targetMeme = feed.find(p => p.id === memeId);
+                if (targetMeme?.userId) {
+                    const authorId = targetMeme.userId;
+                    const authorScoreKey = `user:${authorId}:meme_score`;
+                    const newScore = await context.redis.incrBy(authorScoreKey, delta);
+                    const lb = new Leaderboard(context, 'game3_meme');
+                    let username = 'Meme Artist';
+                    try {
+                        const u = await context.reddit.getUserById(authorId);
+                        if (u) username = u.username;
+                    } catch (e) { }
+                    await lb.submitScore(authorId, username, newScore);
+                }
+            } catch (e) {
+                console.error('Vote failed:', e);
+                context.ui.showToast('Vote failed — try again');
             }
         };
 
@@ -316,9 +341,12 @@ Devvit.addCustomPostType({
                             </hstack>
                         ))
                     ) : (
-                        <vstack alignment="center middle" grow>
-                            <text color={MEME_LORD.accentColor} size="medium" weight="bold">The arena awaits.</text>
+                        <vstack alignment="center middle" grow gap="small">
+                            <text color={MEME_LORD.accentColor} size="large" weight="bold">The arena awaits.</text>
                             <text color={Theme.colors.textDim} size="small">Be the first gladiator to enter!</text>
+                            <spacer size="small" />
+                            <text color={Theme.colors.textDim} size="xsmall">Tap "Create Meme" above to forge your first creation.</text>
+                            <text color={Theme.colors.textDim} size="xsmall">Use the daily theme for 2x vote power!</text>
                         </vstack>
                     )}
                 </vstack>

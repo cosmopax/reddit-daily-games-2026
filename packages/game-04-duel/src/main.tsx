@@ -104,6 +104,7 @@ Devvit.addCustomPostType({
         const [showLeaderboard, setShowLeaderboard] = useState(false);
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
         const [lbLoading, setLbLoading] = useState(false);
+        const [challengeBoard, setChallengeBoard] = useState<any[]>([]);
 
         const { data: initialData, loading, error } = useAsync<any>(async () => {
             const state = await server.getGameState(userId);
@@ -115,55 +116,99 @@ Devvit.addCustomPostType({
         const stats = localState?.stats || initialData?.stats || { wins: 0, streak: 0, bestStreak: 0, games: 0 };
 
         const refreshStats = async () => {
-            const s = await server.getPlayerStats(userId);
-            setLocalState((prev: any) => ({ ...prev, stats: s }));
+            try {
+                const s = await server.getPlayerStats(userId);
+                setLocalState((prev: any) => ({ ...prev, stats: s }));
+            } catch (e) { console.error('Stats refresh failed:', e); }
         };
 
         const loadLeaderboard = async () => {
             setLbLoading(true);
-            const lb = new Leaderboard(context, 'game4_duel');
-            const data = await lb.getTop(10);
-            setLeaderboardData(data);
+            try {
+                const lb = new Leaderboard(context, 'game4_duel');
+                const data = await lb.getTop(10);
+                setLeaderboardData(data);
+            } catch (e) {
+                console.error('Leaderboard load failed:', e);
+                context.ui.showToast('Could not load leaderboard');
+            }
             setLbLoading(false);
         };
 
         const onSelectDifficulty = async (difficulty: Difficulty) => {
             if (!state || processing) return;
             setProcessing(true);
-            const newState = await server.selectDifficulty(userId, difficulty);
-            setLocalState((prev: any) => ({ ...prev, state: newState }));
+            try {
+                const newState = await server.selectDifficulty(userId, difficulty);
+                setLocalState((prev: any) => ({ ...prev, state: newState }));
+            } catch (e) {
+                console.error('Difficulty select failed:', e);
+                context.ui.showToast('Failed to select difficulty — try again');
+            }
             setProcessing(false);
         };
 
         const onAnswer = async (answerIndex: number) => {
             if (!state || processing) return;
             setProcessing(true);
-            const newState = await server.submitAnswer(userId, answerIndex);
-            setLocalState((prev: any) => ({ ...prev, state: newState }));
+            try {
+                const newState = await server.submitAnswer(userId, answerIndex);
+                setLocalState((prev: any) => ({ ...prev, state: newState }));
+            } catch (e) {
+                console.error('Answer submit failed:', e);
+                context.ui.showToast('Failed to submit answer — try again');
+            }
             setProcessing(false);
         };
 
         const onNext = async () => {
             if (!state) return;
             setProcessing(true);
-            const newState = await server.nextRound(userId);
-            setLocalState((prev: any) => ({ ...prev, state: newState }));
-            if (newState.phase === 'game_over') await refreshStats();
+            try {
+                const newState = await server.nextRound(userId);
+                setLocalState((prev: any) => ({ ...prev, state: newState }));
+                if (newState.phase === 'game_over') {
+                    await refreshStats();
+                    // Save to post challenge board and load it
+                    if (context.postId) {
+                        await server.savePostChallenge(
+                            context.postId, userId,
+                            newState.player.score,
+                            newState.player.score > newState.ai.score
+                        );
+                        const board = await server.getPostChallengeBoard(context.postId);
+                        setChallengeBoard(board);
+                    }
+                }
+            } catch (e) {
+                console.error('Next round failed:', e);
+                context.ui.showToast('Failed to advance — try again');
+            }
             setProcessing(false);
         };
 
         const onProceedToDifficulty = async () => {
             if (!state) return;
             setProcessing(true);
-            const newState = await server.proceedToDifficultySelect(userId);
-            setLocalState((prev: any) => ({ ...prev, state: newState }));
+            try {
+                const newState = await server.proceedToDifficultySelect(userId);
+                setLocalState((prev: any) => ({ ...prev, state: newState }));
+            } catch (e) {
+                console.error('Proceed failed:', e);
+                context.ui.showToast('Failed to proceed — try again');
+            }
             setProcessing(false);
         };
 
         const onReset = async () => {
             setProcessing(true);
-            const newState = await server.resetGame(userId);
-            setLocalState((prev: any) => ({ ...prev, state: newState }));
+            try {
+                const newState = await server.resetGame(userId);
+                setLocalState((prev: any) => ({ ...prev, state: newState }));
+            } catch (e) {
+                console.error('Reset failed:', e);
+                context.ui.showToast('Failed to reset — try again');
+            }
             setProcessing(false);
         };
 
@@ -333,6 +378,21 @@ Devvit.addCustomPostType({
                             );
                         })}
                     </vstack>
+
+                    {/* Challenge Board — other players on this post */}
+                    {challengeBoard.length > 0 && (
+                        <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} width="100%" gap="small">
+                            <text size="small" weight="bold" color={accentColor}>Challenge Board ({challengeBoard.length} players)</text>
+                            {challengeBoard.slice(0, 5).map((entry: any, i: number) => (
+                                <hstack key={`cb-${i}`} gap="small" alignment="center middle">
+                                    <text size="xsmall" color={i === 0 ? Theme.colors.gold : Theme.colors.textDim}>{i === 0 ? '👑' : `#${i + 1}`}</text>
+                                    <text size="xsmall" color={Theme.colors.text}>{entry.username}</text>
+                                    <spacer grow />
+                                    <text size="xsmall" weight="bold" color={entry.won ? Theme.colors.success : Theme.colors.danger}>{entry.score}pts {entry.won ? 'W' : 'L'}</text>
+                                </hstack>
+                            ))}
+                        </vstack>
+                    )}
 
                     <hstack gap="small" alignment="center middle">
                         <button appearance="primary" size="medium" onPress={onReset}>PLAY AGAIN</button>

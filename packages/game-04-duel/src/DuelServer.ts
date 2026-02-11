@@ -250,4 +250,33 @@ export class DuelServer {
         await this.context.redis.del(this.getKey(userId));
         return await this.createNewGame(userId);
     }
+
+    /** Save final score to a post's challenge board so other players can see it */
+    async savePostChallenge(postId: string, userId: string, score: number, won: boolean): Promise<void> {
+        try {
+            let username = 'Player';
+            try {
+                const u = await this.context.reddit.getUserById(userId);
+                if (u) username = u.username;
+            } catch (e) { }
+            const entry = JSON.stringify({ username, score, won, timestamp: Date.now() });
+            await this.context.redis.hSet(`challenge:${postId}`, { [userId]: entry });
+        } catch (e) {
+            console.error('Failed to save post challenge:', e);
+        }
+    }
+
+    /** Get all players' results for a specific post */
+    async getPostChallengeBoard(postId: string): Promise<{ username: string; score: number; won: boolean }[]> {
+        try {
+            const raw = await this.context.redis.hGetAll(`challenge:${postId}`);
+            if (!raw) return [];
+            return Object.values(raw)
+                .map(v => { try { return JSON.parse(v); } catch { return null; } })
+                .filter(Boolean)
+                .sort((a: any, b: any) => b.score - a.score);
+        } catch (e) {
+            return [];
+        }
+    }
 }

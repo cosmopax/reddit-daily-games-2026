@@ -99,21 +99,28 @@ Devvit.addCustomPostType({
         const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
         const [lbLoading, setLbLoading] = useState(false);
 
-        // Load initial game state + scenario + today's choice status
+        // Prestige
+        const [localPrestigeLevel, setLocalPrestigeLevel] = useState<number | null>(null);
+
+        // Load initial game state + scenario + today's choice status + prestige
         const { data: initialData, loading } = useAsync<any>(async () => {
             const state = await server.getUserState(userId);
             const scenario = await server.getDailyScenario();
             const todayChoice = await server.hasChosenToday(userId);
+            const prestigeLevel = await server.getPrestigeLevel(userId);
             return {
                 state: state as unknown as Record<string, any>,
                 scenario,
                 todayChoice,
+                prestigeLevel,
             };
         });
 
         const state = localState || initialData?.state;
         const scenario = initialData?.scenario;
         const alreadyChosen = initialData?.todayChoice;
+        const prestigeLevel = localPrestigeLevel ?? initialData?.prestigeLevel ?? 0;
+        const prestigeMult = 1.0 + (prestigeLevel * 0.5);
 
         const refreshState = async () => {
             const fresh = await server.getUserState(userId);
@@ -121,22 +128,32 @@ Devvit.addCustomPostType({
         };
 
         const onBuy = async (assetId: AssetType) => {
-            const success = await server.buyAsset(userId, assetId);
-            if (success) {
-                context.ui.showToast(`Bought ${ASSETS[assetId].name}!`);
-                await refreshState();
-            } else {
-                context.ui.showToast("Not enough cash!");
+            try {
+                const success = await server.buyAsset(userId, assetId);
+                if (success) {
+                    context.ui.showToast(`Bought ${ASSETS[assetId].name}!`);
+                    await refreshState();
+                } else {
+                    context.ui.showToast("Not enough cash!");
+                }
+            } catch (e) {
+                console.error('Buy failed:', e);
+                context.ui.showToast('Purchase failed — try again');
             }
         };
 
         const onInvestMax = async (assetId: AssetType) => {
-            const amount = await server.investMax(userId, assetId);
-            if (amount > 0) {
-                context.ui.showToast(`MAX invested in ${ASSETS[assetId].name}!`);
-                await refreshState();
-            } else {
-                context.ui.showToast("No cash available!");
+            try {
+                const amount = await server.investMax(userId, assetId);
+                if (amount > 0) {
+                    context.ui.showToast(`MAX invested in ${ASSETS[assetId].name}!`);
+                    await refreshState();
+                } else {
+                    context.ui.showToast("No cash available!");
+                }
+            } catch (e) {
+                console.error('Invest max failed:', e);
+                context.ui.showToast('Investment failed — try again');
             }
         };
 
@@ -155,9 +172,25 @@ Devvit.addCustomPostType({
 
         const loadLeaderboard = async () => {
             setLbLoading(true);
-            const data = await server.getLeaderboard();
-            setLeaderboardData(data);
+            try {
+                const data = await server.getLeaderboard();
+                setLeaderboardData(data);
+            } catch (e) {
+                console.error('Leaderboard load failed:', e);
+                context.ui.showToast('Could not load leaderboard');
+            }
             setLbLoading(false);
+        };
+
+        const onPrestige = async () => {
+            const result = await server.prestige(userId);
+            if (result) {
+                setLocalPrestigeLevel(result.newLevel);
+                await refreshState();
+                context.ui.showToast(`PRESTIGE ${result.newLevel}! Income multiplier: ${result.multiplier}x`);
+            } else {
+                context.ui.showToast('Need $10M net worth to prestige!');
+            }
         };
 
         // ─── SPLASH SCREEN ───────────────────────
@@ -414,13 +447,15 @@ Devvit.addCustomPostType({
             <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="small">
                 <NarrativeHeader
                     title="GET RICH LAZY"
-                    subtitle={`+$${hourlyIncome.toLocaleString()}/hr passive income`}
+                    subtitle={prestigeLevel > 0
+                        ? `+$${hourlyIncome.toLocaleString()}/hr × ${prestigeMult}x prestige`
+                        : `+$${hourlyIncome.toLocaleString()}/hr passive income`}
                     accentColor={Theme.narrative.goldHighlight}
                     onLeaderboard={() => { setScreen('leaderboard'); loadLeaderboard(); }}
                     leaderboardLabel="🏆 Rankings"
                 />
 
-                {/* Cash & Net Worth Bar with Milestone */}
+                {/* Cash & Net Worth Bar with Milestone + Prestige */}
                 <vstack padding="small" backgroundColor={Theme.colors.surface} cornerRadius="small">
                     <hstack alignment="space-between middle" width="100%">
                         <vstack>
@@ -431,6 +466,11 @@ Devvit.addCustomPostType({
                             <text size="xsmall" color={getMilestoneTitle(state.netWorth).color}>
                                 {getMilestoneTitle(state.netWorth).emoji} {getMilestoneTitle(state.netWorth).title}
                             </text>
+                            {prestigeLevel > 0 && (
+                                <text size="xsmall" color={Theme.colors.gold}>
+                                    {'⭐'.repeat(Math.min(prestigeLevel, 5))} P{prestigeLevel} ({prestigeMult}x)
+                                </text>
+                            )}
                         </vstack>
                         <vstack alignment="end">
                             <text size="small" color={Theme.colors.textDim}>Net Worth</text>
@@ -498,15 +538,23 @@ Devvit.addCustomPostType({
                     ))}
                 </vstack>
 
+                {/* Prestige Button — visible at TITAN ($10M+) */}
+                {state.netWorth >= 10_000_000 && (
+                    <button appearance="destructive" size="small" onPress={onPrestige}>
+                        👑 PRESTIGE — Reset for {prestigeMult + 0.5}x income forever
+                    </button>
+                )}
+
                 {/* Share & Income */}
                 <hstack alignment="center middle" gap="small" padding="small">
                     <button appearance="secondary" size="small" onPress={async () => {
                         try {
                             if (!context.postId) return;
                             const milestone = getMilestoneTitle(state.netWorth);
+                            const prestigeTag = prestigeLevel > 0 ? `\n${'⭐'.repeat(Math.min(prestigeLevel, 5))} Prestige ${prestigeLevel} (${prestigeMult}x income)` : '';
                             await context.reddit.submitComment({
                                 id: context.postId,
-                                text: `GET RICH LAZY\n${milestone.emoji} ${milestone.title}\nNet Worth: $${Math.floor(state.netWorth).toLocaleString()}\nPassive Income: $${hourlyIncome.toLocaleString()}/hr\n${hourlyIncome >= 1000 ? '💰 Money printer go BRRR' : '🌱 Building the empire...'}`
+                                text: `GET RICH LAZY\n${milestone.emoji} ${milestone.title}${prestigeTag}\nNet Worth: $${Math.floor(state.netWorth).toLocaleString()}\nPassive Income: $${hourlyIncome.toLocaleString()}/hr\n${hourlyIncome >= 1000 ? '💰 Money printer go BRRR' : '🌱 Building the empire...'}`
                             });
                             context.ui.showToast('Portfolio shared!');
                         } catch (e) { context.ui.showToast('Could not share'); }

@@ -88,7 +88,21 @@ function buildHiveEmojiGrid(answers: (boolean | null)[], score: number, grade: s
 // ═══════════════════════════════════════════════════════
 // BUILD GAUNTLET ROUNDS FROM TRENDS
 // ═══════════════════════════════════════════════════════
-function buildGauntlet(trends: Trend[]): GauntletRound[] {
+// Difficulty tiers based on player stats
+function getDifficultyLevel(stats: { bestScore: number; maxStreak: number; gamesPlayed: number }): number {
+    // 0 = easy (new players), 1 = medium, 2 = hard (veterans)
+    if (stats.gamesPlayed >= 10 && stats.maxStreak >= 3) return 2;
+    if (stats.gamesPlayed >= 3 || stats.bestScore >= 300) return 1;
+    return 0;
+}
+
+const DIFFICULTY_OFFSETS: number[][] = [
+    [0.3, 0.6, 1.6, 2.5],  // Easy: wide spread, easy to distinguish
+    [0.4, 0.7, 1.5, 2.2],  // Medium: default
+    [0.6, 0.8, 1.3, 1.7],  // Hard: tight spread, tough to pick
+];
+
+function buildGauntlet(trends: Trend[], difficulty: number = 1): GauntletRound[] {
     // Shuffle trends
     const shuffled = [...trends];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -98,17 +112,25 @@ function buildGauntlet(trends: Trend[]): GauntletRound[] {
 
     const rounds: GauntletRound[] = [];
     let idx = 0;
+    const offsets = DIFFICULTY_OFFSETS[difficulty] || DIFFICULTY_OFFSETS[1];
 
     for (const type of ROUND_SEQUENCE) {
         if (type === 'higher_lower') {
             const a = shuffled[idx++ % shuffled.length];
             const b = shuffled[idx++ % shuffled.length];
+            // On hard difficulty, pick trends with closer traffic values
+            if (difficulty >= 2) {
+                const sorted = [...shuffled].sort((x, y) => Math.abs(x.traffic - y.traffic));
+                if (sorted.length >= 2) {
+                    rounds.push({ type, trendA: sorted[0], trendB: sorted[1] });
+                    continue;
+                }
+            }
             rounds.push({ type, trendA: a, trendB: b });
         } else if (type === 'closest_guess') {
             const hidden = shuffled[idx++ % shuffled.length];
-            // Generate 4 plausible traffic options
+            // Generate 4 plausible traffic options — tighter on harder difficulties
             const real = hidden.traffic;
-            const offsets = [0.4, 0.7, 1.5, 2.2];
             const candidates = offsets.map(m => Math.round(real * m));
             candidates[0] = real; // ensure real is in there
             // Shuffle candidates
@@ -229,7 +251,8 @@ Devvit.addCustomPostType({
 
         const startGauntlet = () => {
             if (!data?.trends) return;
-            const rounds = buildGauntlet(data.trends);
+            const difficulty = getDifficultyLevel(data.stats || { bestScore: 0, maxStreak: 0, gamesPlayed: 0 });
+            const rounds = buildGauntlet(data.trends, difficulty);
             setGameState({
                 rounds,
                 currentRound: 0,
@@ -279,41 +302,46 @@ Devvit.addCustomPostType({
                 const finalScore = gameState.score;
                 const correctCount = gameState.answers.filter(a => a === true).length;
 
-                const statsKey = `user:${userId}:hive_stats`;
-                const statsRaw = await context.redis.get(statsKey);
-                let stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalScore: 0, gamesPlayed: 0, bestScore: 0, maxStreak: 0 };
-
-                stats.gamesPlayed += 1;
-                stats.totalScore += finalScore;
-                if (finalScore > stats.bestScore) stats.bestScore = finalScore;
-
-                if (correctCount >= 3) {
-                    stats.streak += 1;
-                    if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
-                } else {
-                    stats.streak = 0;
-                }
-
-                await context.redis.set(statsKey, JSON.stringify(stats));
-                await context.redis.hSet('daily_participants', { [userId]: String(finalScore) });
-
-                // Leaderboard
-                const lb = new Leaderboard(context, 'game2_trivia');
-                let username = 'Hive Mind Node';
                 try {
-                    const u = await context.reddit.getUserById(userId);
-                    if (u) username = u.username;
-                } catch (e) { }
-                await lb.submitScore(userId, username, stats.totalScore);
+                    const statsKey = `user:${userId}:hive_stats`;
+                    const statsRaw = await context.redis.get(statsKey);
+                    let stats = statsRaw ? JSON.parse(statsRaw) : { streak: 0, totalScore: 0, gamesPlayed: 0, bestScore: 0, maxStreak: 0 };
 
-                // Auto-share on perfect score
-                if (correctCount === 5 && context.postId) {
+                    stats.gamesPlayed += 1;
+                    stats.totalScore += finalScore;
+                    if (finalScore > stats.bestScore) stats.bestScore = finalScore;
+
+                    if (correctCount >= 3) {
+                        stats.streak += 1;
+                        if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+                    } else {
+                        stats.streak = 0;
+                    }
+
+                    await context.redis.set(statsKey, JSON.stringify(stats));
+                    await context.redis.hSet('daily_participants', { [userId]: String(finalScore) });
+
+                    // Leaderboard
+                    const lb = new Leaderboard(context, 'game2_trivia');
+                    let username = 'Hive Mind Node';
                     try {
-                        await context.reddit.submitComment({
-                            id: context.postId,
-                            text: `🧠 PERFECT SYNC! I scored ${finalScore} points (5/5) in the Hive Mind Gauntlet! Streak: ${stats.streak}`
-                        });
+                        const u = await context.reddit.getUserById(userId);
+                        if (u) username = u.username;
                     } catch (e) { }
+                    await lb.submitScore(userId, username, stats.totalScore);
+
+                    // Auto-share on perfect score
+                    if (correctCount === 5 && context.postId) {
+                        try {
+                            await context.reddit.submitComment({
+                                id: context.postId,
+                                text: `🧠 PERFECT SYNC! I scored ${finalScore} points (5/5) in the Hive Mind Gauntlet! Streak: ${stats.streak}`
+                            });
+                        } catch (e) { }
+                    }
+                } catch (e) {
+                    console.error('Failed to save game stats:', e);
+                    context.ui.showToast('Score saved locally but sync failed');
                 }
 
                 setGameState({ ...gameState, currentRound: nextIdx, phase: 'game_over' });
@@ -330,9 +358,14 @@ Devvit.addCustomPostType({
 
         const loadLeaderboard = async () => {
             setLbLoading(true);
-            const lb = new Leaderboard(context, 'game2_trivia');
-            const d = await lb.getTop(10);
-            setLeaderboardData(d);
+            try {
+                const lb = new Leaderboard(context, 'game2_trivia');
+                const d = await lb.getTop(10);
+                setLeaderboardData(d);
+            } catch (e) {
+                console.error('Leaderboard load failed:', e);
+                context.ui.showToast('Could not load leaderboard');
+            }
             setLbLoading(false);
         };
 
@@ -449,9 +482,14 @@ Devvit.addCustomPostType({
                             <button appearance="secondary" size="small" onPress={() => { setShowLeaderboard(true); loadLeaderboard(); }}>VIEW RANKINGS</button>
                         </vstack>
                     ) : (
-                        <button appearance="primary" size="medium" onPress={startGauntlet}>
-                            BEGIN GAUNTLET
-                        </button>
+                        <vstack alignment="center middle" gap="small">
+                            <text size="xsmall" color={Theme.colors.textDim}>
+                                Difficulty: {['INITIATE', 'ADEPT', 'MASTER'][getDifficultyLevel(data?.stats || { bestScore: 0, maxStreak: 0, gamesPlayed: 0 })]}
+                            </text>
+                            <button appearance="primary" size="medium" onPress={startGauntlet}>
+                                BEGIN GAUNTLET
+                            </button>
+                        </vstack>
                     )}
 
                     <hstack alignment="center middle" padding="small">

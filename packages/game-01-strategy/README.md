@@ -1,25 +1,31 @@
-# GET RICH LAZY
+# Get Rich Lazy
 
-> **Part of the 2026 Reddit Daily Games Portfolio**
+**Two advisors. One wants you rich. The other wants you alive.**
 
-**Get Rich Lazy** is a high-fidelity idle strategy game built natively on Devvit. It challenges Redditors to build the ultimate investment portfolio through strategic asset allocation and hourly passive growth.
+An idle strategy game where you allocate assets, pick a financial advisor personality, and then sit back while hourly compounding does the work. Vic says go all-in on crypto. Sal says diversify. They're both judging you. The leaderboard is watching.
 
-## 🚀 The Daily Loop
-- **Daily Strategy:** Players make a one-time decision each UTC day to align with specific market influencers (e.g., "Vic" vs "Sal"), impacting their risk/reward profile for the next 24 hours.
-- **Hourly Growth:** Assets generate passive income every hour, updating the player's net worth automatically.
-- **Leaderboard Dominance:** Compete against your subreddit to see who can accumulate the most wealth.
+## How It Works
 
-## 🧠 AI & Technology
-- **AI Sentiment:** Leverages **Google Gemini** to analyze simulated market sentiment and provide dynamic feedback on asset performance.
-- **Service Proxy Architecture:** Implements a robust `ServiceProxy` with multi-layer fallbacks to ensure gameplay continues even during API rate limits or downtime.
-- **Devvit Native:** Utilizes Reddit's latest Devvit components for a seamless, low-latency mobile experience.
+- **Daily strategy decision** -- align with a market influencer each UTC day to set your risk/reward profile
+- **Hourly passive growth** -- assets compound automatically, no need to stare at the screen (but you will)
+- **AI sentiment analysis** -- Gemini analyzes simulated market conditions and roasts your portfolio accordingly
+- **Milestone ranks** -- climb from BROKE to ROOKIE to HUSTLER to BOSS to MOGUL to TITAN
+- **Advisor reactions** -- Vic and Sal comment on your performance with increasingly unhinged enthusiasm or disappointment
+- **Leaderboard** -- subreddit-wide net worth rankings
 
-## 🛠️ Setup & Configuration
-Requires a `GEMINI_API_KEY` for sentiment analysis features.
+## Tech
+
+Devvit native blocks (no webview), Redis for state, hourly scheduler job for growth ticks, Gemini API for sentiment. ServiceProxy with multi-layer fallbacks keeps the game running even when APIs flake.
 
 ```bash
-devvit settings set GEMINI_API_KEY "your-key-here"
+npm install
+devvit upload
 ```
 
+## Part of Something Bigger
+
+Get Rich Lazy is one of several games teaching you how complex systems actually behave -- feedback loops, compounding, risk modeling, the way small daily decisions cascade into wildly different outcomes. It's an intuition pump for resource allocation in networked systems. Or you can just try to become a TITAN. Both valid. Welcome to your warm-up for the Age of Mind.
+
 ---
-Built with ❤️ by **cosmopax** for the Reddit Developers Hackathon.
+
+*Built for the Reddit Daily Games Hackathon 2026. Vic believes in you. Sal has concerns.*

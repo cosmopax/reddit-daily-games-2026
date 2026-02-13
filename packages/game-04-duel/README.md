@@ -1,43 +1,33 @@
-# OUTSMARTED AGAIN
+# Outsmarted Again
 
-> **Part of the 2026 Reddit Daily Games Portfolio by cosmopax labs**
+**Category trivia vs an AI that also picks its own difficulty. Good luck.**
 
-**Outsmarted Again** is a category-based trivia game where you go head-to-head against an AI opponent. Each round reveals a new topic — from History to Pop Culture to Technology — and you choose your risk level before answering. Play it safe for a guaranteed point, or go hard for triple the reward.
+A 5-round trivia duel where you and an AI opponent independently choose difficulty levels and answer questions across six categories. The twist: harder questions are worth more points, but the AI is making the same gamble. It's not just about what you know -- it's about how much you're willing to risk on knowing it.
 
 ## How It Works
 
-1. **Category Reveal** — Each round presents a random category (History, Science, Pop Culture, Geography, Sports, Technology).
-2. **Choose Your Difficulty** — Pick Easy (+1 pt), Normal (+2 pts), or Hard (+3 pts). The harder the question, the bigger the payoff.
-3. **Answer the Question** — Four multiple-choice options. Think fast.
-4. **See How the AI Did** — The AI independently picks its own difficulty and answers its own question. After each round, you see how both of you performed.
-5. **Final Showdown** — After 5 rounds, the player with the most points wins. A full round-by-round breakdown shows every decision made.
+- **6 categories** -- History, Science, Pop Culture, Geography, Sports, Technology
+- **Risk-reward difficulty** -- Easy (+1), Normal (+2), Hard (+3). Pick before you see the question
+- **270 handcrafted questions** -- 15 per category per difficulty, no repeats within a game
+- **AI opponent** -- independently selects difficulty (weighted toward normal) with accuracy that scales. Beatable, but never a free win
+- **Round-by-round reveal** -- after each round, see both your and the AI's choice, difficulty, and result
+- **Rank progression** -- from Novice to Grandmaster based on cumulative wins
+- **Shareable emoji grid** -- compact visual summary of who did what each round
+- **~2 minute sessions** -- perfect scroll-break length
 
-## Why It's Fun
+## Tech
 
-- **Risk vs. Reward** — Do you play it safe or gamble on hard questions for more points? The AI does the same, so strategy matters as much as knowledge.
-- **270 Handcrafted Questions** — 15 questions per category per difficulty level, all factual and carefully balanced. No repeats within a game.
-- **The AI Is No Pushover** — It picks its own difficulty (weighted toward normal) and has accuracy that scales with difficulty. It's beatable, but never a guaranteed win.
-- **Quick Sessions** — A full game takes about 2 minutes. Perfect for a Reddit scroll break.
-- **Leaderboard** — Win games to climb the Trivia Champions rankings. Share your results in the comments.
-
-## Categories
-
-| Category | Topics Include |
-|----------|---------------|
-| History | Ancient civilizations, wars, political milestones, cultural moments |
-| Science | Physics, chemistry, biology, astronomy, earth science |
-| Pop Culture | Movies, music, TV, internet culture, celebrity trivia |
-| Geography | Countries, capitals, landmarks, natural features, demographics |
-| Sports | Olympics, world records, team sports, athlete trivia |
-| Technology | Programming, inventions, internet history, gadgets, AI |
-
-## Setup
-
-Requires `GEMINI_API_KEY` (optional — used for future AI-generated questions).
+Devvit native blocks, 270 questions in a static data module, AI opponent logic with weighted difficulty selection and accuracy curves, Redis leaderboards. Optional Gemini integration for future dynamic question generation.
 
 ```bash
-devvit settings set GEMINI_API_KEY "your-key-here"
+npm install
+devvit upload
 ```
 
+## Part of Something Bigger
+
+Outsmarted Again makes you think about thinking -- specifically, about confidence calibration under uncertainty. When should you bet on yourself? How do you model an opponent's strategy when you can't see their hand? These are the same questions at the heart of decision theory, game theory, and every multi-agent system ever built. Playful sparring for the Age of Mind.
+
 ---
-Built by **cosmopax labs** | Total Gamification
+
+*Built for the Reddit Daily Games Hackathon 2026. The AI is not sorry about that last round.*

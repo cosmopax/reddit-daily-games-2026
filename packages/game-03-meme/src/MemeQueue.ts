@@ -1,15 +1,16 @@
 import { RedisWrapper, ServiceProxy } from 'shared';
 
-const QUEUE_KEY = 'meme:generation_queue';
-const MEME_DATA_KEY = 'meme:data'; // Hash of ID -> JSON string of MemePost
-const LEADERBOARD_KEY = 'meme:leaderboard'; // ZSet of ID -> Score
-const TIMELINE_KEY = 'meme:timeline'; // ZSet of ID -> Timestamp
-const RETRY_KEY = 'meme:retry_count'; // Hash of jobId -> retry count
-const DEAD_LETTER_KEY = 'meme:dead_letter'; // List of failed jobs
-const STATUS_KEY = 'meme:job_status'; // Hash of jobId -> status string
+const QUEUE_KEY = 'meme:generation_queue';   // ZSet: member=jobId, score=timestamp (FIFO)
+const QUEUE_DATA_KEY = 'meme:queue_data';    // Hash: jobId -> JSON MemeJob
+const MEME_DATA_KEY = 'meme:data';           // Hash: jobId -> JSON MemePost
+const LEADERBOARD_KEY = 'meme:leaderboard';  // ZSet: jobId -> vote score
+const TIMELINE_KEY = 'meme:timeline';        // ZSet: jobId -> timestamp
+const RETRY_KEY = 'meme:retry_count';        // Hash: jobId -> retry count
+const DEAD_LETTER_KEY = 'meme:dead_letter';  // Hash: jobId -> JSON failed job
+const STATUS_KEY = 'meme:job_status';        // Hash: jobId -> status string
 
 const MAX_RETRIES = 3;
-const RETRY_DELAYS = [2000, 4000, 8000]; // Exponential backoff
+const RETRY_DELAYS = [2000, 4000, 8000];
 
 export interface MemeJob {
     id: string;
@@ -44,19 +45,25 @@ export class MemeQueue {
             prompt,
             timestamp: Date.now(),
         };
-        await (this.context.redis as any).rPush(QUEUE_KEY, JSON.stringify(job));
+        await this.context.redis.hSet(QUEUE_DATA_KEY, { [jobId]: JSON.stringify(job) });
+        await this.context.redis.zAdd(QUEUE_KEY, { member: jobId, score: job.timestamp });
         await this.context.redis.hSet(STATUS_KEY, { [jobId]: 'queued' });
         return jobId;
     }
 
-    /** Get job status for user feedback */
     async getJobStatus(jobId: string): Promise<string> {
         const status = await this.context.redis.hGet(STATUS_KEY, jobId);
         return status || 'unknown';
     }
 
     async processNextJob(): Promise<void> {
-        const rawJob = await (this.context.redis as any).lPop(QUEUE_KEY);
+        const items = await this.context.redis.zRange(QUEUE_KEY, 0, 0, { by: 'rank' });
+        if (!items || items.length === 0) return;
+
+        const jobId = items[0].member;
+        await this.context.redis.zRem(QUEUE_KEY, [jobId]);
+
+        const rawJob = await this.context.redis.hGet(QUEUE_DATA_KEY, jobId);
         if (!rawJob) return;
 
         const job = JSON.parse(rawJob) as MemeJob;
@@ -65,12 +72,21 @@ export class MemeQueue {
 
         try {
             const proxy = new ServiceProxy(this.context);
-            const imageUrl = await proxy.generateImage(job.prompt, job.id);
+            let imageUrl = await proxy.generateImage(job.prompt, job.id);
+            console.log(`Image generated for ${job.id}: ${imageUrl.substring(0, 80)}...`);
 
-            // Check if we got a placeholder (fallback) — treat as soft failure
-            const isPlaceholder = imageUrl.includes('placehold.co');
-            if (isPlaceholder) {
-                console.warn(`Meme ${job.id} got placeholder — may retry`);
+            // Upload external image to Reddit CDN so Devvit can render it
+            if (imageUrl && !imageUrl.startsWith('data:') && imageUrl.startsWith('http')) {
+                try {
+                    const uploaded = await this.context.media.upload({ url: imageUrl, type: 'image' });
+                    if (uploaded?.mediaUrl) {
+                        console.log(`Uploaded to Reddit CDN: ${uploaded.mediaUrl}`);
+                        imageUrl = uploaded.mediaUrl;
+                    }
+                } catch (uploadErr) {
+                    console.error(`Reddit CDN upload failed for ${job.id}:`, uploadErr);
+                    // Keep the original URL as fallback
+                }
             }
 
             const post: MemePost = {
@@ -86,12 +102,12 @@ export class MemeQueue {
             await this.context.redis.zAdd(LEADERBOARD_KEY, { member: job.id, score: 0 });
             await this.context.redis.zAdd(TIMELINE_KEY, { member: job.id, score: post.timestamp });
             await this.context.redis.hSet(STATUS_KEY, { [job.id]: 'complete' });
+            await this.context.redis.hDel(QUEUE_DATA_KEY, [jobId]);
 
-            console.log(`Meme ${job.id} created and posted.`);
+            console.log(`Meme ${job.id} created and posted with URL: ${imageUrl.substring(0, 80)}`);
         } catch (e) {
             console.error(`Generation Failed for ${job.id}:`, e);
 
-            // Retry logic with exponential backoff
             const retryRaw = await this.context.redis.hGet(RETRY_KEY, job.id);
             const retryCount = retryRaw ? parseInt(retryRaw, 10) : 0;
 
@@ -99,11 +115,8 @@ export class MemeQueue {
                 const nextRetry = retryCount + 1;
                 await this.context.redis.hSet(RETRY_KEY, { [job.id]: String(nextRetry) });
                 await this.context.redis.hSet(STATUS_KEY, { [job.id]: `retry ${nextRetry}/${MAX_RETRIES}` });
+                await this.context.redis.zAdd(QUEUE_KEY, { member: job.id, score: Date.now() });
 
-                // Re-enqueue the job
-                await (this.context.redis as any).rPush(QUEUE_KEY, JSON.stringify(job));
-
-                // Schedule retry with delay
                 const delay = RETRY_DELAYS[retryCount] || 8000;
                 try {
                     await this.context.scheduler.runJob({
@@ -113,17 +126,18 @@ export class MemeQueue {
                 } catch (schedErr) {
                     console.error('Failed to schedule retry:', schedErr);
                 }
-
                 console.log(`Meme ${job.id} queued for retry ${nextRetry}/${MAX_RETRIES} in ${delay}ms`);
             } else {
-                // Move to dead letter queue
-                await (this.context.redis as any).rPush(DEAD_LETTER_KEY, JSON.stringify({
-                    ...job,
-                    error: String(e),
-                    failedAt: Date.now(),
-                    retries: retryCount,
-                }));
+                await this.context.redis.hSet(DEAD_LETTER_KEY, {
+                    [job.id]: JSON.stringify({
+                        ...job,
+                        error: String(e),
+                        failedAt: Date.now(),
+                        retries: retryCount,
+                    })
+                });
                 await this.context.redis.hSet(STATUS_KEY, { [job.id]: 'failed' });
+                await this.context.redis.hDel(QUEUE_DATA_KEY, [job.id]);
                 console.error(`Meme ${job.id} permanently failed after ${MAX_RETRIES} retries`);
             }
         }

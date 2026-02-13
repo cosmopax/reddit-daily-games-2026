@@ -1,27 +1,34 @@
-# HYPER HIVE MIND
+# Hyper Hive Mind
 
-> **Part of the 2026 Reddit Daily Games Portfolio**
+**Predict the pulse. Become the collective.**
 
-**Hyper Hive Mind** is a real-time data-driven trivia experience. It tests the community's pulse by pitting trending topics against each other in a battle of search volume.
+A data-driven trivia gauntlet where you guess which search terms are trending harder, estimate traffic volumes, and spot the outlier in a set of four. The Hive Brain narrates your performance like a sentient network monitoring your neural sync rate. It's weirdly motivating.
 
-## 🚀 The Daily Loop
-- **The Daily Gauntlet:** Every 24 hours, a new pair of trending search terms is fetched from real-world data.
-- **Predict the Pulse:** Guess which topic currently has higher search volume.
-- **Streak Building:** Correct guesses increase your daily streak. High streaks unlock bonus points and exclusive leaderboard rankings.
-- **Community Wisdom:** See how your guess compares to the rest of the subreddit in real-time.
+## How It Works
 
-## 🧠 AI & Technology
-- **Real-Time Data:** Powered by the **SerpApi (Google Trends engine)** to pull actual, live search data.
-- **AI Hints:** Uses **Google Gemini** to generate clever, contextual hints for each topic to help (or trick!) the player.
-- **Resilient Fallbacks:** A dedicated `ServiceProxy` handles API interruptions by failing over to a curated, high-relevance trend pool, ensuring zero downtime.
+- **5-round daily gauntlet** with three round types:
+  - **Higher/Lower** -- which trend has more search volume?
+  - **Closest Guess** -- estimate the actual traffic number
+  - **Odd One Out** -- spot the lowest-traffic outlier among four trends
+- **Real-time data** -- trends pulled from Google via SerpApi, so the answers change with the actual internet
+- **AI hints** -- Gemini generates contextual clues that are sometimes helpful and sometimes devious
+- **Streak bonuses** -- consecutive correct answers compound your score
+- **Hive Brain commentary** -- "UNPRECEDENTED RESONANCE. You ARE the collective."
+- **Shareable emoji grid** -- flex your gauntlet results in the comments
 
-## 🛠️ Setup & Configuration
-Requires `SERPAPI_KEY` and `GEMINI_API_KEY`.
+## Tech
+
+Devvit native blocks, SerpApi for live Google Trends data, Gemini for hint generation, Redis leaderboards. Curated fallback trend pool ensures zero downtime when APIs are rate-limited.
 
 ```bash
-devvit settings set SERPAPI_KEY "your-key-here"
-devvit settings set GEMINI_API_KEY "your-key-here"
+npm install
+devvit upload
 ```
 
+## Part of Something Bigger
+
+Hyper Hive Mind trains your sense for collective attention patterns -- what captures a population's focus, how information flows, and why your gut feeling about "what people care about" is often hilariously wrong. It's a crash course in distributed cognition, wrapped in a trivia game. Casual calibration for the Age of Mind.
+
 ---
-Built with ❤️ by **cosmopax** for the Reddit Developers Hackathon.
+
+*Built for the Reddit Daily Games Hackathon 2026. The hive is always watching. The hive is always judging.*

@@ -1,26 +1,31 @@
-# MEME WARS
+# Meme Wars
 
-> **Part of the 2026 Reddit Daily Games Portfolio**
+**Enter the AI meme arena. Prompt is mightier than the sword.**
 
-**Meme Wars** turns your subreddit into a creative arena. It leverages state-of-the-art Generative AI to allow users to create, share, and vote on community memes in a competitive daily cycle.
+A daily creative competition where you write text prompts, an AI turns them into images, and the subreddit votes on who made the funniest thing. Daily themes rotate from Cyberpunk Chaos to Wholesome Vibes to Cosmic Horror. The Meme Lord watches over all.
 
-## 🚀 The Daily Loop
-- **Create:** Submit text prompts to generate unique memes using the **Flux.1** model.
-- **Vote:** Browse the community feed and upvote the funniest creations. 
-- **Conquer:** The highest-voted memes each day win reputation points and are featured on the subreddit's "Meme Lord" leaderboard.
-- **Integrity:** Built-in vote guarding prevents duplicates and ensures fair play.
+## How It Works
 
-## 🧠 AI & Technology
-- **Generative Power:** Uses **Hugging Face (Flux.1 schnell)** for lightning-fast, high-quality image generation.
-- **Async Processing:** Employs a robust job queue to handle image generation in the background, keeping the UI responsive.
-- **Fallback UI:** If AI generation is unavailable, the system automatically provides themed placeholders to maintain the competitive flow.
+- **Prompt-to-image generation** -- describe your meme, pick a style (Cyberpunk, Oil Painting, Neon Pop, Photorealistic, Anime, Pixel Art), and Flux.1 renders it
+- **Daily rotating themes** -- everyone works with the same aesthetic constraint, creativity is the variable
+- **Community voting** -- browse the feed, upvote the best, downvote the cringe
+- **Meme Lord leaderboard** -- reputation points for daily winners
+- **Vote integrity** -- built-in duplicate prevention and fair play mechanics
+- **Async generation** -- images render in the background via job queue, UI stays responsive
 
-## 🛠️ Setup & Configuration
-Requires a `HUGGINGFACE_TOKEN`.
+## Tech
+
+Devvit native blocks, Hugging Face (Flux.1 schnell) or Replicate for image generation, async scheduler-based job queue, Redis for meme storage and voting. Themed placeholder fallback when AI generation is unavailable.
 
 ```bash
-devvit settings set HUGGINGFACE_TOKEN "your-token-here"
+npm install
+devvit upload
 ```
 
+## Part of Something Bigger
+
+Meme Wars is secretly about human-AI co-creation -- learning to speak a language that machines understand well enough to produce what you actually imagined. Prompt engineering as a competitive sport. The better you get at translating intention into instruction, the more useful you'll be in every future interaction with generative systems. Consider it literacy training for the Age of Mind, but funnier.
+
 ---
-Built with ❤️ by **cosmopax** for the Reddit Developers Hackathon.
+
+*Built for the Reddit Daily Games Hackathon 2026. Your prompt. Your legacy. Your fault.*

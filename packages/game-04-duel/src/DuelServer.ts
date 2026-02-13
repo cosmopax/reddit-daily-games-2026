@@ -272,7 +272,7 @@ export class DuelServer {
             const raw = await this.context.redis.hGetAll(`challenge:${postId}`);
             if (!raw) return [];
             return Object.values(raw)
-                .map(v => { try { return JSON.parse(v); } catch { return null; } })
+                .map((v: any) => { try { return JSON.parse(v as string); } catch { return null; } })
                 .filter(Boolean)
                 .sort((a: any, b: any) => b.score - a.score);
         } catch (e) {

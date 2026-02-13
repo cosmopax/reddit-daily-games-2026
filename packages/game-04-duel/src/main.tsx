@@ -323,7 +323,7 @@ Devvit.addCustomPostType({
             if (stats.streak >= 3) achievements.push(`${stats.streak}-WIN STREAK`);
 
             return (
-                <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="medium" gap="small">
+                <vstack height="100%" width="100%" backgroundColor={Theme.colors.background} padding="small" gap="small">
                     <NarrativeHeader
                         title="OUTSMARTED AGAIN"
                         subtitle="Final Results"
@@ -331,53 +331,37 @@ Devvit.addCustomPostType({
                         onLeaderboard={() => { setShowLeaderboard(true); loadLeaderboard(); }}
                     />
 
-                    {/* Result banner */}
-                    <vstack padding="medium" cornerRadius="medium" backgroundColor={Theme.colors.surface} border="thin" borderColor={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger} alignment="center middle" gap="small" width="100%">
-                        <text size="xxlarge" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
+                    {/* Compact result banner */}
+                    <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger} alignment="center middle" gap="small" width="100%">
+                        <text size="large" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
                             {won ? 'YOU WIN!' : tied ? 'TIE GAME!' : 'AI WINS!'}
                         </text>
-                        <hstack gap="large" alignment="center middle">
-                            <vstack alignment="center middle">
-                                <text size="small" color={Theme.colors.textDim}>You</text>
-                                <text size="xxlarge" weight="bold" color={Theme.colors.success}>{state.player.score}</text>
-                            </vstack>
-                            <text size="large" color={Theme.colors.textDim}>vs</text>
-                            <vstack alignment="center middle">
-                                <text size="small" color={Theme.colors.textDim}>AI</text>
-                                <text size="xxlarge" weight="bold" color={Theme.colors.danger}>{state.ai.score}</text>
-                            </vstack>
-                        </hstack>
-
-                        {/* Rank & Streak */}
                         <hstack gap="medium" alignment="center middle">
-                            <vstack alignment="center middle">
-                                <text size="xsmall" color={Theme.colors.textDim}>Rank</text>
-                                <text size="small" weight="bold" color={rank.color}>{rank.title}</text>
-                            </vstack>
-                            <vstack alignment="center middle">
-                                <text size="xsmall" color={Theme.colors.textDim}>Streak</text>
-                                <text size="small" weight="bold" color={stats.streak >= 3 ? Theme.colors.warning : Theme.colors.text}>
-                                    {stats.streak >= 3 ? `🔥 ${stats.streak}` : String(stats.streak)}
-                                </text>
-                            </vstack>
-                            <vstack alignment="center middle">
-                                <text size="xsmall" color={Theme.colors.textDim}>Wins</text>
-                                <text size="small" weight="bold" color={Theme.colors.text}>{stats.wins}</text>
-                            </vstack>
+                            <text size="large" weight="bold" color={Theme.colors.success}>{state.player.score}</text>
+                            <text size="small" color={Theme.colors.textDim}>vs</text>
+                            <text size="large" weight="bold" color={Theme.colors.danger}>{state.ai.score}</text>
+                        </hstack>
+                        <hstack gap="medium" alignment="center middle">
+                            <text size="xsmall" weight="bold" color={rank.color}>{rank.title}</text>
+                            <text size="xsmall" color={Theme.colors.textDim}>|</text>
+                            <text size="xsmall" weight="bold" color={stats.streak >= 3 ? Theme.colors.warning : Theme.colors.text}>
+                                {stats.streak >= 3 ? `🔥${stats.streak}` : `${stats.streak} streak`}
+                            </text>
+                            <text size="xsmall" color={Theme.colors.textDim}>|</text>
+                            <text size="xsmall" weight="bold" color={Theme.colors.text}>{stats.wins} wins</text>
                         </hstack>
                     </vstack>
 
                     {/* Achievements */}
                     {achievements.length > 0 && (
                         <hstack padding="small" cornerRadius="small" backgroundColor="#1A1A0A" border="thin" borderColor={Theme.colors.gold} gap="small" alignment="center middle">
-                            <text size="small" color={Theme.colors.gold}>🏅</text>
-                            <text size="small" weight="bold" color={Theme.colors.gold}>{achievements.join(' · ')}</text>
+                            <text size="xsmall" color={Theme.colors.gold}>🏅 {achievements.join(' · ')}</text>
                         </hstack>
                     )}
 
-                    {/* Round breakdown with emoji grid */}
+                    {/* Round breakdown */}
                     <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} width="100%" gap="small">
-                        <text size="small" weight="bold" color={accentColor}>Battle Grid</text>
+                        <text size="xsmall" weight="bold" color={accentColor}>Battle Grid</text>
                         {state.rounds.map((round, i) => {
                             if (i >= state.player.correct.length) return null;
                             const pOk = state.player.correct[i];
@@ -405,9 +389,9 @@ Devvit.addCustomPostType({
 
                     {/* Challenge Board — other players on this post */}
                     <vstack padding="small" cornerRadius="small" backgroundColor={Theme.colors.surface} border="thin" borderColor={accentColor} width="100%" gap="small">
-                        <text size="small" weight="bold" color={accentColor}>Challenge Board {challengeBoard.length > 0 ? `(${challengeBoard.length} players)` : ''}</text>
+                        <text size="xsmall" weight="bold" color={accentColor}>Challenge Board {challengeBoard.length > 0 ? `(${challengeBoard.length})` : ''}</text>
                         {challengeBoard.length > 0 ? (
-                            challengeBoard.slice(0, 5).map((entry: any, i: number) => (
+                            challengeBoard.slice(0, 3).map((entry: any, i: number) => (
                                 <hstack key={`cb-${i}`} gap="small" alignment="center middle">
                                     <text size="xsmall" color={i === 0 ? Theme.colors.gold : Theme.colors.textDim}>{i === 0 ? '👑' : `#${i + 1}`}</text>
                                     <text size="xsmall" color={Theme.colors.text}>{entry.username}</text>
@@ -416,26 +400,8 @@ Devvit.addCustomPostType({
                                 </hstack>
                             ))
                         ) : (
-                            <text size="xsmall" color={Theme.colors.textDim}>You're the first! Your score is now on the board.</text>
+                            <text size="xsmall" color={Theme.colors.textDim}>You're the first! Score is on the board.</text>
                         )}
-                    </vstack>
-
-                    {/* Share Grid Preview */}
-                    <vstack padding="small" cornerRadius="small" backgroundColor="#0A0A1A" border="thin" borderColor={accentColor} width="100%">
-                        <text size="xsmall" color={accentColor} weight="bold">YOUR BATTLE GRID</text>
-                        {state.rounds.map((round, i) => {
-                            if (i >= state.player.correct.length) return null;
-                            const pOk = state.player.correct[i];
-                            const aOk = state.ai.correct[i];
-                            return (
-                                <text key={`g-${i}`} size="xsmall" color={Theme.colors.textDim}>
-                                    R{i + 1} {categoryEmojis[round.category] || '🎯'} You:{pOk ? '✅' : '❌'} AI:{aOk ? '✅' : '❌'}
-                                </text>
-                            );
-                        })}
-                        <text size="xsmall" weight="bold" color={won ? Theme.colors.success : tied ? Theme.colors.warning : Theme.colors.danger}>
-                            {won ? '🏆 VICTORY' : tied ? '🤝 TIE' : '💀 DEFEAT'} {state.player.score}-{state.ai.score}
-                        </text>
                     </vstack>
 
                     <hstack gap="small" alignment="center middle">

@@ -177,35 +177,7 @@ export class ServiceProxy {
             }
         }
 
-        // 2. Fallback: Hugging Face (returns blob - try to use via router)
-        const hfKey = await this.getSecret('HUGGINGFACE_TOKEN');
-        if (hfKey) {
-            try {
-                const model = "black-forest-labs/FLUX.1-schnell";
-                const url = `https://router.huggingface.co/hf-inference/models/${model}`;
-                const response = await fetchWithTimeout(url, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${hfKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ inputs: prompt })
-                }, 25000);
-
-                if (response.ok) {
-                    // HF returns binary image data - convert to data URI
-                    const blob = await response.arrayBuffer();
-                    const base64 = btoa(String.fromCharCode(...new Uint8Array(blob)));
-                    return `data:image/png;base64,${base64}`;
-                } else {
-                    console.warn(`HF Error ${response.status}`);
-                }
-            } catch (e) {
-                console.error('HF Error:', e);
-            }
-        }
-
-        // 3. Pollinations.ai — free, keyless AI image generation
+        // 2. Pollinations.ai — free, keyless AI image generation (returns real HTTPS URLs)
         try {
             const encoded = encodeURIComponent(prompt.slice(0, 200));
             const pollinationsUrl = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=512&nologo=true&seed=${Date.now()}`;
@@ -220,7 +192,7 @@ export class ServiceProxy {
             console.error('Pollinations Error:', e);
         }
 
-        // 4. Final fallback: themed placeholder
+        // 3. Final fallback: themed placeholder
         return `https://placehold.co/512x512/1A1A1B/FF4500?text=Meme+${jobId}`;
     }
 
